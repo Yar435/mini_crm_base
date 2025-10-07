@@ -1,7 +1,7 @@
 # PyCharm Setup — 07.10.2025
 
 ## 1) Интерпретатор и venv
-1. File → Settings → Project → Python Interpreter → Add → Existing → выбери `./.venv` (или создай там же).  
+1. File → Settings → Project → Python Interpreter → Add → Existing → выбери `./.venv` (или создай там же).
 2. Открой терминал PyCharm и выполни:
    ```powershell
    .\scripts\init_venv.ps1
