@@ -17,13 +17,15 @@ max-line-length = 100
 extend-ignore = ["E203", "W503"]
 exclude = [".git", "__pycache__", ".venv", "venv", ".mypy_cache"]
 per-file-ignores = [
-    "__init__.py:F401"
+    "__init__.py:F401",
+    "src/config/settings/dev.py:F403,F405",
 ]
 
 [tool.pytest.ini_options]
-python_files = ["tests.py", "test_*.py", "*_tests.py"]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+pythonpath = ["src"]
+testpaths = ["src/tests"]
 addopts = "-ra -q"
-testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
