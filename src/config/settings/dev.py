@@ -55,6 +55,7 @@ DATABASES = {
 # ВАЖНО: расширяем тут, а не мутируем base
 INSTALLED_APPS = base.INSTALLED_APPS + [
     "rest_framework",
+    "django_filters",
     "core",
     "clients",
     "deals",
@@ -63,6 +64,16 @@ INSTALLED_APPS = base.INSTALLED_APPS + [
 
 # DRF
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    # пагинация по умолчанию
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
+    "PAGE_SIZE": 10,  # дефолтный размер страницы
+    # фильтры/поиск/сортировка
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    # в dev можно открыть доступ
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
 }
