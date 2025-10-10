@@ -1,0 +1,1010 @@
+openapi: 3.0.3
+info:
+  title: mini_crm_base API
+  version: 0.1.0
+  description: Учебно-практический CRM backend (Django + DRF + JWT)
+paths:
+  /api/auth/token/:
+    post:
+      operationId: api_auth_token_create
+      description: Возвращает пару токенов (access/refresh) по валидным учетным данным.
+      summary: Получить JWT-пару
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: api_auth_token_refresh_create
+      description: Возвращает новый access-токен по refresh.
+      summary: Обновить access-токен
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/auth/token/verify/:
+    post:
+      operationId: api_auth_token_verify_create
+      description: Проверяет валидность access/refresh токена.
+      summary: Верифицировать токен
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/clients/:
+    get:
+      operationId: api_clients_list
+      description: Возвращает список клиентов с фильтрацией и пагинацией.
+      summary: Список клиентов
+      parameters:
+      - in: query
+        name: email
+        schema:
+          type: string
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Clients
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClientList'
+              examples:
+                ПримерОтвета(пагинация):
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - count: 1
+                      next: null
+                      previous: null
+                      results:
+                      - id: 1
+                        name: Boba
+                        email: boba@example.com
+                        phone: '+79264444731'
+                        created_at: '2025-10-08T08:28:27.764444Z'
+                  summary: Пример ответа (пагинация)
+          description: ''
+    post:
+      operationId: api_clients_create
+      summary: Создать клиента
+      tags:
+      - Clients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRequest'
+            examples:
+              ПримерЗапроса:
+                value:
+                  name: Boba
+                  email: boba@example.com
+                  phone: +7926...
+                summary: Пример запроса
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+              examples:
+                ПримерЗапроса:
+                  value:
+                    name: Boba
+                    email: boba@example.com
+                    phone: +7926...
+                  summary: Пример запроса
+          description: ''
+  /api/clients/{id}/:
+    get:
+      operationId: api_clients_retrieve
+      summary: Детали клиента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this client.
+        required: true
+      tags:
+      - Clients
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
+    put:
+      operationId: api_clients_update
+      summary: Обновить данные клиента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this client.
+        required: true
+      tags:
+      - Clients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
+    patch:
+      operationId: api_clients_partial_update
+      summary: Частично обновить данные клиента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this client.
+        required: true
+      tags:
+      - Clients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClientRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClientRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+          description: ''
+    delete:
+      operationId: api_clients_destroy
+      summary: Удалить клиента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this client.
+        required: true
+      tags:
+      - Clients
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/deals/:
+    get:
+      operationId: api_deals_list
+      description: Возвращает список сделок с фильтрацией и пагинацией.
+      summary: Список сделок
+      parameters:
+      - in: query
+        name: client
+        schema:
+          type: integer
+      - in: query
+        name: manager
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - lost
+          - new
+          - won
+        description: |-
+          * `new` - Новая
+          * `won` - Успех
+          * `lost` - Провал
+      tags:
+      - Deals
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDealList'
+              examples:
+                ПримерОтвета:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - count: 1
+                      results:
+                      - id: 1
+                        title: 'Deal #1'
+                        status: new
+                  summary: Пример ответа
+          description: ''
+    post:
+      operationId: api_deals_create
+      summary: Создать сделку
+      tags:
+      - Deals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DealRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+          description: ''
+  /api/deals/{id}/:
+    get:
+      operationId: api_deals_retrieve
+      summary: Детали сделки
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deal.
+        required: true
+      tags:
+      - Deals
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+          description: ''
+    put:
+      operationId: api_deals_update
+      summary: Обновить сделку
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deal.
+        required: true
+      tags:
+      - Deals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DealRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+          description: ''
+    patch:
+      operationId: api_deals_partial_update
+      summary: Частично обновить сделку
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deal.
+        required: true
+      tags:
+      - Deals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDealRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDealRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+          description: ''
+    delete:
+      operationId: api_deals_destroy
+      summary: Удалить сделку
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deal.
+        required: true
+      tags:
+      - Deals
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/managers/:
+    get:
+      operationId: api_managers_list
+      description: Возвращает список менеджеров с фильтрацией и пагинацией.
+      summary: Список менеджеров
+      parameters:
+      - in: query
+        name: email
+        schema:
+          type: string
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Managers
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedManagerList'
+              examples:
+                ПримерОтвета(пагинация):
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?page=4
+                    previous: http://api.example.org/accounts/?page=2
+                    results:
+                    - count: 1
+                      next: null
+                      previous: null
+                      results:
+                      - id: 2
+                        name: Grisha
+                        email: griphone@rambler.ru
+                        phone: '+76778765432'
+                  summary: Пример ответа (пагинация)
+          description: ''
+    post:
+      operationId: api_managers_create
+      summary: Создать менеджера
+      tags:
+      - Managers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagerRequest'
+            examples:
+              ПримерЗапроса:
+                value:
+                  name: Grisha
+                  email: griphone@rambler.ru
+                  phone: +7926...
+                summary: Пример запроса
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ManagerRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              examples:
+                ПримерЗапроса:
+                  value:
+                    name: Grisha
+                    email: griphone@rambler.ru
+                    phone: +7926...
+                  summary: Пример запроса
+          description: ''
+  /api/managers/{id}/:
+    get:
+      operationId: api_managers_retrieve
+      summary: Детали по менеджеру
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manager.
+        required: true
+      tags:
+      - Managers
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+          description: ''
+    put:
+      operationId: api_managers_update
+      summary: Обновить данные менеджера
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manager.
+        required: true
+      tags:
+      - Managers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ManagerRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+          description: ''
+    patch:
+      operationId: api_managers_partial_update
+      summary: Частично обновить данные менеджера
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manager.
+        required: true
+      tags:
+      - Managers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedManagerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedManagerRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+          description: ''
+    delete:
+      operationId: api_managers_destroy
+      summary: Удалить менеджера
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manager.
+        required: true
+      tags:
+      - Managers
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    ClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+      required:
+      - name
+    Deal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        client:
+          type: integer
+        manager:
+          type: integer
+          nullable: true
+      required:
+      - client
+      - created_at
+      - id
+      - title
+    DealRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        client:
+          type: integer
+        manager:
+          type: integer
+          nullable: true
+      required:
+      - client
+      - title
+    Manager:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+      required:
+      - email
+      - id
+      - name
+    ManagerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+      required:
+      - email
+      - name
+    PaginatedClientList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Client'
+    PaginatedDealList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deal'
+    PaginatedManagerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Manager'
+    PatchedClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+    PatchedDealRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        client:
+          type: integer
+        manager:
+          type: integer
+          nullable: true
+    PatchedManagerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 50
+    StatusEnum:
+      enum:
+      - new
+      - won
+      - lost
+      type: string
+      description: |-
+        * `new` - Новая
+        * `won` - Успех
+        * `lost` - Провал
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

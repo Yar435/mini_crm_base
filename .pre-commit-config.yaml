@@ -23,3 +23,14 @@ repos:
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
+
+  -   repo: local
+      hooks:
+          -   id: spectacular-validate
+              name: spectacular validate OpenAPI
+              language: system            # важное: не python, не script — чтобы не требовался bash
+              entry: python src/manage.py spectacular --validate --fail-on-warn --file src/schema.yaml
+              pass_filenames: false       # manage.py не принимает список файлов от pre-commit
+              stages: [ pre-commit, manual ]    # можно добавить push, если хочешь
+              env:
+                  DJANGO_SETTINGS_MODULE: config.settings.dev

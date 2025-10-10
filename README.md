@@ -121,3 +121,28 @@ pytest -q #из файла src/tests/test_smoke.py
 - Добавить JWT-аутентификацию в API
 - Подключить swagger/openapi схемы
 - Подготовить демо-фронтенд для CRM-операций
+
+
+## JWT авторизация
+```
+$resp = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/token/" -Method POST -ContentType "application/json" -Body $body
+```
+ ```
+ $resp | ConvertTo-Json -Depth 5
+ ```
+```
+$access = $resp.access
+```
+```
+ $headers = @{ Authorization = "Bearer $access" }
+
+```
+```
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/client/ -Headers $headers
+
+```
+
+## Spectacular
+```
+python manage.py spectacular --validate --fail-on-warn --file schema.yaml
+```

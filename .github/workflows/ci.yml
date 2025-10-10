@@ -1,0 +1,25 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Validate OpenAPI
+        run: python src/manage.py spectacular --validate --fail-on-warn --file src/schema.yaml
+      - name: Run tests with coverage
+        run: pytest
+      - name: Upload coverage & schema
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            coverage.xml
+            src/schema.yaml
