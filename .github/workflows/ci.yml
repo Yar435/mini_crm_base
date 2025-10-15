@@ -41,9 +41,8 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Migrate
         run: python src/manage.py migrate --noinput
-      - name: Run tests (coverage xml)
-        run: |
-          pytest -q
+      - name: Tests (coverage xml)
+        run: pytest -q
       - name: Upload coverage.xml
         uses: actions/upload-artifact@v4
         with: { name: coverage-xml, path: coverage.xml }
@@ -59,7 +58,7 @@ jobs:
         run: |
           docker run -d --name db -e POSTGRES_DB=app -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app -p 5432:5432 postgres:16-alpine
           docker run -d --name redis -p 6379:6379 redis:7-alpine
-          until docker exec db pg_isready -U app; do sleep 1; done
+          for i in {1..30}; do docker exec db pg_isready -U app && break; sleep 1; done
       - name: Run web
         run: |
           docker run -d --name web \
@@ -70,7 +69,6 @@ jobs:
             -e CELERY_RESULT_BACKEND=redis://redis:6379/1 \
             -e DJANGO_SETTINGS_MODULE=config.settings.prod \
             -p 8000:8000 mini_crm_base:ci
-          # ждём веб
           for i in {1..30}; do
             if curl -fsS http://localhost:8000/health/ >/dev/null; then exit 0; fi
             sleep 2
