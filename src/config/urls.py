@@ -19,7 +19,7 @@ from clients.views import ClientViewSet
 # наш сериалайзер, добавляющий claim token_version
 from core.auth import TokenObtainPairWithVersionSerializer
 from core.serializers import DetailResponseSerializer
-from core.views import health
+from core.views import LogoutView, health
 from deals.views import DealViewSet, ManagerViewSet
 
 # --- Auth views (с описаниями для Swagger) ---
@@ -109,6 +109,7 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # health
     path("health/", health),
+    path("api/auth/logout/", LogoutView.as_view(), name="logout"),
 ]
 
 if settings.DEBUG:

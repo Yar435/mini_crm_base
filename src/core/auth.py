@@ -7,7 +7,12 @@ class TokenObtainPairWithVersionSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token["token_version"] = getattr(getattr(user, "security", None), "token_version", 1)
+        sec = getattr(user, "security", None)
+        if sec is None:
+            from core.models import UserSecurityProfile
+
+            sec = UserSecurityProfile.objects.create(user=user)
+        token["token_version"] = sec.token_version
         return token
 
 
