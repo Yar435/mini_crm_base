@@ -1,5 +1,11 @@
 # 🧭 Mini CRM Base
 
+
+
+![CI](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Yar435/your-gist-id/raw/coverage-badge.json)
+
+
 Учебно-разработческая база проекта **mini_crm_base** — Django + Django REST Framework, с докером, тестами и линтерами.
 Предназначен как стартовая заготовка для GraphScope и других интеграций с amoCRM.
 
@@ -124,6 +130,10 @@ pytest -q #из файла src/tests/test_smoke.py
 
 
 ## JWT авторизация
+
+```
+body = @{username="yar435"; password="4351"} | ConvertTo-Json
+```
 ```
 $resp = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/token/" -Method POST -ContentType "application/json" -Body $body
 ```
@@ -138,7 +148,7 @@ $access = $resp.access
 
 ```
 ```
-Invoke-RestMethod -Uri http://127.0.0.1:8000/api/client/ -Headers $headers
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/clients/ -Headers $headers
 
 ```
 

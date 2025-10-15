@@ -26,6 +26,8 @@ services:
       target: prod
     image: mini_crm_base:prod
     env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
     ports:
       - "8000:8000"
     depends_on:
@@ -33,6 +35,60 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  worker:
+    build:
+      context: .
+      target: prod
+    image: mini_crm_base:prod
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    entrypoint: ["sh", "-lc", "cd /app/src && celery -A config worker -l info -Q celery -n worker@%h"]
+    healthcheck:
+        test: [ "CMD", "bash", "-lc", "celery -A config inspect ping -d worker@$$HOSTNAME | grep -q 'pong'" ]
+        interval: 15s
+        timeout: 10s
+        retries: 5
+
+  beat:
+    build:
+      context: .
+      target: prod
+    image: mini_crm_base:prod
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    entrypoint: ["sh", "-lc", "cd /app/src && celery -A config beat -l info"]
+
+  flower:
+    build:
+      context: .
+      target: prod
+    image: mini_crm_base:prod
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      FLOWER_PORT: 5555
+      FLOWER_BROKER_URL: ${CELERY_BROKER_URL}
+    depends_on:
+      redis:
+        condition: service_started
+      worker:
+        condition: service_started
+    entrypoint: ["sh", "-lc", "cd /app/src && celery -A config flower --broker=${FLOWER_BROKER_URL}"]
+    ports:
+      - "5555:5555"
 
 volumes:
   pgdata:

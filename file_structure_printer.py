@@ -35,7 +35,7 @@ from pathlib import Path
 # Если BASE_PATH пустая строка -> стартуем от места где лежит этот файл.
 # BASE_PATH = "C:\\Users\\Yar43\\OneDrive\\Документы\\Obsidian Vault"
 # пример: "/home/user/projects" или "" для текущей папки скрипта
-BASE_PATH = ""
+BASE_PATH = "C:\\Users\\Yar43\\OneDrive\\Документы\\Obsidian Vault"
 # Режим отображения: "FULL" или "TRUNCATE"
 DISPLAY_MODE = "TRUNCATE"  # "FULL" or "TRUNCATE"
 

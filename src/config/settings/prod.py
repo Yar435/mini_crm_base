@@ -24,6 +24,11 @@ WHITENOISE_USE_FINDERS = True
 # Базовая безопасность (при реальном домене расширим)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 HOSTS = ("127.0.0.1", "localhost")
-CSRF_TRUSTED_ORIGINS = [
-    f"http://{h}" for h in ALLOWED_HOSTS if h and h not in ("127.0.0.1", "localhost")
-] + [f"https://{h}" for h in ALLOWED_HOSTS if h and h not in ("127.0.0.1", "localhost")]
+SECURE_HSTS_SECONDS = 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = (
+    os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+)

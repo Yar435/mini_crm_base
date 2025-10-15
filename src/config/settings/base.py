@@ -1,6 +1,8 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # BASE_DIR = .../src/config (как у тебя)
@@ -39,6 +41,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "core.middleware.RequestIDMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -77,7 +80,7 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "core.auth.VersionedJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -111,6 +114,34 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+# --- Redis cache ---
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        "KEY_PREFIX": "mini_crm",
+    }
+}
+
+
+# --- Celery broker/backend ---
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
+
+CELERY_BEAT_SCHEDULE = {
+    "heartbeat-every-minute": {
+        "task": "core.tasks.heartbeat",
+        "schedule": crontab(minute="*/1"),  # каждую минуту
+        "args": (),
+    },
+}
+
 # База: Postgres по env, иначе SQLite
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
@@ -118,7 +149,14 @@ POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
-if POSTGRES_HOST and POSTGRES_DB and POSTGRES_USER and POSTGRES_PASSWORD:
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=False)
+    }
+elif all([POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD]):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -154,3 +192,44 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,  # удобно для prod-паттернов
+    "BLACKLIST_AFTER_ROTATION": False,  # мы пойдём через token_version
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+}
+
+
+# --- Logging (JSON-ish) ---
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "format": '{"time":"%(asctime)s","level":"%(levelname)s",'
+            '"logger":"%(name)s","message":"%(message)s","request_id":"%(request_id)s"}'
+        },
+        "simple": {"format": "%(levelname)s %(name)s: %(message)s"},
+    },
+    "filters": {
+        "request_id": {
+            "()": "django.utils.log.CallbackFilter",
+            "callback": lambda record: setattr(
+                record, "request_id", getattr(record, "request_id", "-")
+            )
+            or True,
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "filters": ["request_id"],
+        }
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+}

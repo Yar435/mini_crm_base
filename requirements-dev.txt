@@ -66,3 +66,5 @@ wcwidth==0.2.14
 whitenoise
 gunicorn
 django-redis
+flower>=2.0
+dj_database_url>=3.0.1
