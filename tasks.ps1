@@ -71,10 +71,10 @@ function Task-Test { Use-Venv; Ensure-Env; pytest -q }
 function Task-Schema { Use-Venv; Ensure-Env; & $PY $Manage spectacular --validate --file src/schema.yaml }
 
 function Task-Lint {
-  if (-not (Get-Command 'pre-commit' -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing pre-commit into venv..." -ForegroundColor Yellow
-    Use-Venv; pip install pre-commit
-  } else { Use-Venv }
+#   if (-not (Get-Command 'pre-commit' -ErrorAction SilentlyContinue)) {
+#     Write-Host "Installing pre-commit into venv..." -ForegroundColor Yellow
+#     Use-Venv; pip install pre-commit
+#   } else { Use-Venv }
   pre-commit run -a
 }
 

@@ -1,5 +1,6 @@
 default_language_version:
   python: python
+
 repos:
   - repo: https://github.com/psf/black
     rev: 25.9.0
@@ -16,7 +17,9 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-        additional_dependencies: []
+        # Подключаем плагины сюда, а не отдельными репозиториями:
+        additional_dependencies:
+          - flake8-debugger==4.1.2
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -24,13 +27,17 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  -   repo: local
-      hooks:
-          -   id: spectacular-validate
-              name: spectacular validate OpenAPI
-              language: system            # важное: не python, не script — чтобы не требовался bash
-              entry: python src/manage.py spectacular --validate --fail-on-warn --file src/schema.yaml
-              pass_filenames: false       # manage.py не принимает список файлов от pre-commit
-              stages: [ pre-commit, manual ]    # можно добавить push, если хочешь
-              env:
-                  DJANGO_SETTINGS_MODULE: config.settings.dev
+  - repo: https://github.com/asottile/yesqa
+    rev: v1.5.0
+    hooks:
+      - id: yesqa
+
+  # Локальный spectacular, совместимый с Windows (env задаём через cmd /c)
+  - repo: local
+    hooks:
+      - id: spectacular-validate
+        name: spectacular validate OpenAPI
+        language: system
+        entry: python src/manage.py spectacular --settings=config.settings.dev --validate --fail-on-warn --file src/schema.yaml
+        pass_filenames: false
+        stages: [pre-commit, manual]

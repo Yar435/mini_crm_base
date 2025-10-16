@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "ratelimit",
     # Твои приложения
     "core",
     "clients",
@@ -209,27 +210,33 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {
-            "format": '{"time":"%(asctime)s","level":"%(levelname)s",'
-            '"logger":"%(name)s","message":"%(message)s","request_id":"%(request_id)s"}'
-        },
         "simple": {"format": "%(levelname)s %(name)s: %(message)s"},
-    },
-    "filters": {
-        "request_id": {
-            "()": "django.utils.log.CallbackFilter",
-            "callback": lambda record: setattr(
-                record, "request_id", getattr(record, "request_id", "-")
-            )
-            or True,
-        }
+        "verbose": {"format": "%(asctime)s %(levelname)s [%(name)s] %(message)s"},
     },
     "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "json",
-            "filters": ["request_id"],
-        }
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
     },
-    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO"},
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "core": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
 }
+
+# --- Sentry ---
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),  # APM опц.
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+        send_default_pii=False,
+        environment=os.getenv("ENV", "dev"),
+    )

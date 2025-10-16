@@ -26,7 +26,6 @@ paths:
     post:
       operationId: api_auth_token_create
       description: Возвращает пару токенов (access/refresh) по валидным учетным данным.
-        В access-токен добавляется claim `token_version`.
       summary: Получить JWT-пару
       tags:
       - Auth
@@ -710,6 +709,29 @@ paths:
       responses:
         '204':
           description: No response body
+  /health/:
+    get:
+      operationId: health_retrieve
+      description: Проверка доступности DB, Redis и актуальности пульса Celery beat.
+      summary: Health check
+      tags:
+      - Ops
+      security:
+      - VersionedJWTAuthentication: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: ''
 components:
   schemas:
     Client:
@@ -766,7 +788,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/DealStatusEnum'
         created_at:
           type: string
           format: date-time
@@ -793,7 +815,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/DealStatusEnum'
         client:
           type: integer
         manager:
@@ -802,6 +824,16 @@ components:
       required:
       - client
       - title
+    DealStatusEnum:
+      enum:
+      - new
+      - won
+      - lost
+      type: string
+      description: |-
+        * `new` - Новая
+        * `won` - Успех
+        * `lost` - Провал
     DetailResponse:
       type: object
       properties:
@@ -809,6 +841,38 @@ components:
           type: string
       required:
       - detail
+    HealthChecks:
+      type: object
+      properties:
+        db:
+          type: string
+        redis:
+          type: string
+        celery_beat_age_sec:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - db
+      - redis
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthResponseStatusEnum'
+        checks:
+          $ref: '#/components/schemas/HealthChecks'
+      required:
+      - checks
+      - status
+    HealthResponseStatusEnum:
+      enum:
+      - ok
+      - fail
+      type: string
+      description: |-
+        * `ok` - ok
+        * `fail` - fail
     Manager:
       type: object
       properties:
@@ -942,7 +1006,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/DealStatusEnum'
         client:
           type: integer
         manager:
@@ -963,16 +1027,6 @@ components:
         phone:
           type: string
           maxLength: 50
-    StatusEnum:
-      enum:
-      - new
-      - won
-      - lost
-      type: string
-      description: |-
-        * `new` - Новая
-        * `won` - Успех
-        * `lost` - Провал
     TokenObtainPairWithVersionRequest:
       type: object
       properties:

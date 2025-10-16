@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.db import transaction
 from django.urls import include, path
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -19,26 +21,29 @@ from clients.views import ClientViewSet
 # наш сериалайзер, добавляющий claim token_version
 from core.auth import TokenObtainPairWithVersionSerializer
 from core.serializers import DetailResponseSerializer
-from core.views import LogoutView, health
+from core.views import LogoutView, debug_sentry, health
 from deals.views import DealViewSet, ManagerViewSet
 
 # --- Auth views (с описаниями для Swagger) ---
+
+rl = method_decorator(ratelimit(key="ip", rate="5/m", block=True), name="post")
 
 
 class TokenObtainPairPatchedView(TokenObtainPairView):
     serializer_class = TokenObtainPairWithVersionSerializer
 
-    @extend_schema(
+    @rl
+    @extend_schema(  # как было у тебя
         tags=["Auth"],
         summary="Получить JWT-пару",
-        description="Возвращает пару токенов (access/refresh) по валидным учетным данным. "
-        "В access-токен добавляется claim `token_version`.",
+        description="Возвращает пару токенов (access/refresh) по валидным учетным данным.",
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
 
 class TokenRefreshPatchedView(TokenRefreshView):
+    @rl
     @extend_schema(
         tags=["Auth"],
         summary="Обновить access-токен",
@@ -110,6 +115,7 @@ urlpatterns = [
     # health
     path("health/", health),
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),
+    path("debug/sentry/", debug_sentry),
 ]
 
 if settings.DEBUG:
