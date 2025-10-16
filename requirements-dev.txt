@@ -70,3 +70,4 @@ flower>=2.0
 dj_database_url>=3.0.1
 sentry-sdk==2.42.0
 django-ratelimit==4.1.0
+ratelimit==2.2.1
