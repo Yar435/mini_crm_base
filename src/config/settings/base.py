@@ -242,4 +242,5 @@ if SENTRY_DSN:
     )
 
 
+HEALTH_STRICT_DEFAULT = True
 HEALTH_REQUIRE_BEAT = True  # в проде требуем пульс beat

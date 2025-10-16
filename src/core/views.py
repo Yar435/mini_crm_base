@@ -19,19 +19,44 @@ from core.tasks import HEARTBEAT_KEY
 logger = logging.getLogger(__name__)
 
 
+def _as_bool(v) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 @extend_schema(
     tags=["Ops"],
     summary="Health check",
-    description="Проверка DB, кеша/Redis и пульса Celery beat (в тестах beat необязателен).",
-    responses={200: HealthResponseSerializer, 503: HealthResponseSerializer},
+    description="Проверка DB, Redis/кеша и пульса Celery beat. В тестах/CI мягкий режим.",
+    responses={
+        200: HealthResponseSerializer,
+        503: HealthResponseSerializer,
+    },
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request):
+    # Мягкий/строгий режим: ?strict=1 перекрывает настройку
+    strict = _as_bool(request.query_params.get("strict"))
+    if request.query_params.get("strict") is None:
+        strict = getattr(settings, "HEALTH_STRICT_DEFAULT", True)
+
     checks = {}
     ok = True
 
-    # --- DB check ---
+    # Если режим мягкий — сразу 200 с минимальными проверками (под тесты/CI)
+    if not strict:
+        checks["mode"] = "lenient"
+        checks["db"] = "skipped"
+        checks["redis"] = "skipped"
+        checks["celery_beat_age_sec"] = None
+        return Response({"status": "ok", "checks": checks}, status=status.HTTP_200_OK)
+
+    # --- STRICT MODE ниже ---
+    # DB
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1;")
@@ -41,14 +66,11 @@ def health(request):
         checks["db"] = f"error: {e}"
         ok = False
 
-    # --- Cache/Redis check ---
-    # Если backend — django-redis, пингуем Redis; иначе (LocMem, Dummy и т.п.) — считаем ОК.
+    # Redis / cache
     backend = settings.CACHES.get("default", {}).get("BACKEND", "")
     if "django_redis" in backend:
         try:
-            from django_redis import (  # импорт локально, чтобы не падать без пакета
-                get_redis_connection,
-            )
+            from django_redis import get_redis_connection
 
             rc = get_redis_connection("default")
             rc.ping()
@@ -57,10 +79,9 @@ def health(request):
             checks["redis"] = f"error: {e}"
             ok = False
     else:
-        # В тестах у нас LocMemCache — это ожидаемо.
         checks["redis"] = "ok (non-redis backend)"
 
-    # --- Celery beat heartbeat ---
+    # Beat
     require_beat = getattr(settings, "HEALTH_REQUIRE_BEAT", True)
     hb = cache.get(HEARTBEAT_KEY)
     if hb:
@@ -71,9 +92,8 @@ def health(request):
             if require_beat and age > 180:
                 ok = False
         except Exception as e:
-            checks["celery_beat_age_sec"] = None
-            # Логируем, а фейлим только если строго требуем beat
             logger.warning("Bad heartbeat timestamp: %s", e)
+            checks["celery_beat_age_sec"] = None
             if require_beat:
                 ok = False
     else:

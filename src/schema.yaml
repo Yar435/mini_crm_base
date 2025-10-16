@@ -712,7 +712,8 @@ paths:
   /health/:
     get:
       operationId: health_retrieve
-      description: Проверка DB, кеша/Redis и пульса Celery beat (в тестах beat необязателен).
+      description: Проверка DB, Redis/кеша и пульса Celery beat. В тестах/CI мягкий
+        режим.
       summary: Health check
       tags:
       - Ops
