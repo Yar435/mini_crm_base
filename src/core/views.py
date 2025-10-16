@@ -1,13 +1,14 @@
+import logging
 from datetime import datetime
 from datetime import timezone as tz
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection, transaction
-from django_redis import get_redis_connection
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,20 +16,22 @@ from core.models import UserSecurityProfile
 from core.serializers import DetailResponseSerializer, HealthResponseSerializer
 from core.tasks import HEARTBEAT_KEY
 
+logger = logging.getLogger(__name__)
+
 
 @extend_schema(
     tags=["Ops"],
     summary="Health check",
-    description="Проверка доступности DB, Redis и актуальности пульса Celery beat.",
+    description="Проверка DB, кеша/Redis и пульса Celery beat (в тестах beat необязателен).",
     responses={200: HealthResponseSerializer, 503: HealthResponseSerializer},
 )
 @api_view(["GET"])
-@permission_classes([])
+@permission_classes([AllowAny])
 def health(request):
     checks = {}
     ok = True
 
-    # DB check
+    # --- DB check ---
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1;")
@@ -38,30 +41,45 @@ def health(request):
         checks["db"] = f"error: {e}"
         ok = False
 
-    # Redis check
-    try:
-        r = get_redis_connection("default")
-        r.ping()
-        checks["redis"] = "ok"
-    except Exception as e:
-        checks["redis"] = f"error: {e}"
-        ok = False
+    # --- Cache/Redis check ---
+    # Если backend — django-redis, пингуем Redis; иначе (LocMem, Dummy и т.п.) — считаем ОК.
+    backend = settings.CACHES.get("default", {}).get("BACKEND", "")
+    if "django_redis" in backend:
+        try:
+            from django_redis import (  # импорт локально, чтобы не падать без пакета
+                get_redis_connection,
+            )
 
-    # Celery beat heartbeat age (секунды или null)
+            rc = get_redis_connection("default")
+            rc.ping()
+            checks["redis"] = "ok"
+        except Exception as e:
+            checks["redis"] = f"error: {e}"
+            ok = False
+    else:
+        # В тестах у нас LocMemCache — это ожидаемо.
+        checks["redis"] = "ok (non-redis backend)"
+
+    # --- Celery beat heartbeat ---
+    require_beat = getattr(settings, "HEALTH_REQUIRE_BEAT", True)
     hb = cache.get(HEARTBEAT_KEY)
     if hb:
         try:
             ts = datetime.fromisoformat(hb)
             age = (datetime.now(tz.utc) - ts).total_seconds()
             checks["celery_beat_age_sec"] = float(age)
-            if age > 180:  # >3 минут — плохой сигнал
+            if require_beat and age > 180:
                 ok = False
-        except Exception:
+        except Exception as e:
             checks["celery_beat_age_sec"] = None
-            ok = False
+            # Логируем, а фейлим только если строго требуем beat
+            logger.warning("Bad heartbeat timestamp: %s", e)
+            if require_beat:
+                ok = False
     else:
         checks["celery_beat_age_sec"] = None
-        ok = False
+        if require_beat:
+            ok = False
 
     code = status.HTTP_200_OK if ok else status.HTTP_503_SERVICE_UNAVAILABLE
     return Response({"status": "ok" if ok else "fail", "checks": checks}, status=code)

@@ -240,3 +240,6 @@ if SENTRY_DSN:
         send_default_pii=False,
         environment=os.getenv("ENV", "dev"),
     )
+
+
+HEALTH_REQUIRE_BEAT = True  # в проде требуем пульс beat

@@ -1,6 +1,9 @@
-# from .dev import *
+# src/config/settings/test.py
+from . import dev as base
 
-# ⚠️ В тестах не ходим во внешний Redis: локальный in-memory cache
+globals().update(vars(base))
+
+# Cache: in-memory (никакого django-redis)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -8,11 +11,13 @@ CACHES = {
     }
 }
 
-# Celery: исполняем задачи синхронно в том же процессе (без брокера)
+# Celery: выполняем синхронно, без внешнего брокера/бэкенда
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 
-# На всякий случай — отключаем Sentry в тестах
+# На всякий случай — глушим Sentry
 SENTRY_DSN = ""
+
+HEALTH_REQUIRE_BEAT = False  # в тестах beat не обязателен
