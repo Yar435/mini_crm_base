@@ -41,8 +41,11 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Migrate
         run: python src/manage.py migrate --noinput
-      - name: Tests (coverage xml)
-        run: pytest -q
+      -   name: Run tests
+          env:
+              DJANGO_SETTINGS_MODULE: config.settings.test
+              HEALTH_STRICT_DEFAULT: "false"   # на всякий случай, если pytest.ini не подхватится
+          run: pytest -q
       - name: Upload coverage.xml
         uses: actions/upload-artifact@v4
         with: { name: coverage-xml, path: coverage.xml }
