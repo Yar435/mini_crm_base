@@ -4,6 +4,8 @@
 
 ![CI](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Yar435/your-gist-id/raw/coverage-badge.json)
+[![CI](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml)
+
 
 
 Учебно-разработческая база проекта **mini_crm_base** — Django + Django REST Framework, с докером, тестами и линтерами.

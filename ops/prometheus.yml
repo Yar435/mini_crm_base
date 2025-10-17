@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'django'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['web:8000']
+  - job_name: 'celery'
+    static_configs:
+      - targets: [ 'celery-exporter:9540' ]
+  - job_name: 'celery-exporter'
+    static_configs:
+      - targets: [ 'celery-exporter:9808' ]

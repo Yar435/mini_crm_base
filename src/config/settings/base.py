@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "django_prometheus",
     "ratelimit",
     # Твои приложения
     "core",
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -47,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -119,7 +122,7 @@ SPECTACULAR_SETTINGS = {
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         "KEY_PREFIX": "mini_crm",
@@ -176,6 +179,17 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+ENGINE = DATABASES["default"]["ENGINE"]
+
+PROM_ENGINES = {
+    "django.db.backends.postgresql": "django_prometheus.db.backends.postgresql",
+    "django.db.backends.sqlite3": "django_prometheus.db.backends.sqlite3",
+    "django.db.backends.mysql": "django_prometheus.db.backends.mysql",
+}
+
+if ENGINE in PROM_ENGINES:
+    DATABASES["default"]["ENGINE"] = PROM_ENGINES[ENGINE]
 
 # Пароли / i18n / статика
 VALIDATORS_BASE = "django.contrib.auth.password_validation."
@@ -244,3 +258,6 @@ if SENTRY_DSN:
 
 HEALTH_STRICT_DEFAULT = True
 HEALTH_REQUIRE_BEAT = True  # в проде требуем пульс beat
+
+
+METRICS_ENABLED = os.getenv("METRICS_ENABLED", "1") == "1"

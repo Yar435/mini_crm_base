@@ -1,3 +1,7 @@
 yar435
 yar435@yandex.ru
 4351
+
+grafana
+admin
+4351

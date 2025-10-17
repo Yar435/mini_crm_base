@@ -43,7 +43,7 @@ jobs:
         run: python src/manage.py migrate --noinput
       -   name: Run tests
           env:
-              DJANGO_SETTINGS_MODULE: config.settings.test
+              DJANGO_SETTINGS_MODULE: config.settings.prod
               HEALTH_STRICT_DEFAULT: "false"   # на всякий случай, если pytest.ini не подхватится
           run: pytest -q
       - name: Upload coverage.xml

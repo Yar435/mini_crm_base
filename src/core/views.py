@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.metrics import health_hits_total
 from core.models import UserSecurityProfile
 from core.serializers import DetailResponseSerializer, HealthResponseSerializer
 from core.tasks import HEARTBEAT_KEY
@@ -134,3 +135,12 @@ class LogoutView(APIView):
 @permission_classes([IsAdminUser])
 def debug_sentry(request):
     1 / 0
+
+
+class HealthView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        health_hits_total.inc()
+        return Response({"status": "ok"}, status=200)

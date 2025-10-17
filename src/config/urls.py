@@ -100,6 +100,7 @@ router.register("managers", ManagerViewSet, basename="manager")
 # --- URL patterns ---
 
 urlpatterns = [
+    path("", include("django_prometheus.urls")),
     path("admin/", admin.site.urls),
     # API
     path("api/", include(router.urls)),
@@ -117,6 +118,10 @@ urlpatterns = [
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),
     path("debug/sentry/", debug_sentry),
 ]
+
+# if settings.METRICS_ENABLED:
+#     urlpatterns = [path("", include("django_prometheus.urls"))] + urlpatterns
+
 
 if settings.DEBUG:
     import debug_toolbar
