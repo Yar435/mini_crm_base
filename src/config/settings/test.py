@@ -21,4 +21,5 @@ CELERY_RESULT_BACKEND = "cache+memory://"
 SENTRY_DSN = ""
 
 HEALTH_STRICT_DEFAULT = False
+HEALTH_STRICT = False
 HEALTH_REQUIRE_BEAT = False  # в тестах beat не обязателен

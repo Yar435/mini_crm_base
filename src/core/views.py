@@ -1,109 +1,70 @@
-import logging
-from datetime import datetime
-from datetime import timezone as tz
+from __future__ import annotations
 
 from django.conf import settings
-from django.core.cache import cache
-from django.db import connection, transaction
+from django.db import connections, transaction
+from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.metrics import health_hits_total
 from core.models import UserSecurityProfile
-from core.serializers import DetailResponseSerializer, HealthResponseSerializer
-from core.tasks import HEARTBEAT_KEY
+from core.serializers import DetailResponseSerializer
 
-logger = logging.getLogger(__name__)
-
-
-def _as_bool(v) -> bool:
-    if isinstance(v, bool):
-        return v
-    if v is None:
-        return False
-    return str(v).strip().lower() in {"1", "true", "yes", "y", "on"}
+try:
+    import redis  # type: ignore
+except Exception:
+    redis = None
 
 
-@extend_schema(
-    tags=["Ops"],
-    summary="Health check",
-    description="Проверка DB, Redis/кеша и пульса Celery beat. В тестах/CI мягкий режим.",
-    responses={
-        200: HealthResponseSerializer,
-        503: HealthResponseSerializer,
-    },
-)
-@api_view(["GET"])
-@permission_classes([AllowAny])
 def health(request):
-    # Мягкий/строгий режим: ?strict=1 перекрывает настройку
-    strict = _as_bool(request.query_params.get("strict"))
-    if request.query_params.get("strict") is None:
-        strict = getattr(settings, "HEALTH_STRICT_DEFAULT", True)
+    """
+    Shallow health: всегда 200 OK, без внешних зависимостей.
+    Нужен для тестов/балансировщиков типа "жив ли процесс".
+    """
+    return JsonResponse({"status": "ok"}, status=200)
+
+
+def ready(request):
+    """
+    Deep health (включается по желанию в prod): проверяем БД, Redis.
+    Отдаём 200/503 в зависимости от готовности.
+    """
+    strict = getattr(settings, "HEALTH_STRICT", False)
+    if not strict:
+        # Даже если дернули /ready без strict — считаем ок
+        return JsonResponse({"status": "ok", "checks": {"note": "strict disabled"}}, status=200)
 
     checks = {}
     ok = True
 
-    # Если режим мягкий — сразу 200 с минимальными проверками (под тесты/CI)
-    if not strict:
-        checks["mode"] = "lenient"
-        checks["db"] = "skipped"
-        checks["redis"] = "skipped"
-        checks["celery_beat_age_sec"] = None
-        return Response({"status": "ok", "checks": checks}, status=status.HTTP_200_OK)
-
-    # --- STRICT MODE ниже ---
     # DB
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1;")
-            cursor.fetchone()
+        connections["default"].cursor()
         checks["db"] = "ok"
     except Exception as e:
-        checks["db"] = f"error: {e}"
         ok = False
+        checks["db"] = f"error: {e!s}"
 
-    # Redis / cache
-    backend = settings.CACHES.get("default", {}).get("BACKEND", "")
-    if "django_redis" in backend:
+    # Redis (если настроен)
+    redis_url = getattr(settings, "CELERY_BROKER_URL", None) or getattr(settings, "REDIS_URL", None)
+    if redis_url and redis:
         try:
-            from django_redis import get_redis_connection
-
-            rc = get_redis_connection("default")
-            rc.ping()
+            r = redis.Redis.from_url(redis_url)
+            r.ping()
             checks["redis"] = "ok"
         except Exception as e:
-            checks["redis"] = f"error: {e}"
             ok = False
-    else:
-        checks["redis"] = "ok (non-redis backend)"
+            checks["redis"] = f"error: {e!s}"
+    elif redis_url and not redis:
+        # библиотека не установлена
+        checks["redis"] = "skipped (redis lib not installed)"
 
-    # Beat
-    require_beat = getattr(settings, "HEALTH_REQUIRE_BEAT", True)
-    hb = cache.get(HEARTBEAT_KEY)
-    if hb:
-        try:
-            ts = datetime.fromisoformat(hb)
-            age = (datetime.now(tz.utc) - ts).total_seconds()
-            checks["celery_beat_age_sec"] = float(age)
-            if require_beat and age > 180:
-                ok = False
-        except Exception as e:
-            logger.warning("Bad heartbeat timestamp: %s", e)
-            checks["celery_beat_age_sec"] = None
-            if require_beat:
-                ok = False
-    else:
-        checks["celery_beat_age_sec"] = None
-        if require_beat:
-            ok = False
-
-    code = status.HTTP_200_OK if ok else status.HTTP_503_SERVICE_UNAVAILABLE
-    return Response({"status": "ok" if ok else "fail", "checks": checks}, status=code)
+    return JsonResponse(
+        {"status": "ok" if ok else "fail", "checks": checks}, status=200 if ok else 503
+    )
 
 
 class LogoutView(APIView):
