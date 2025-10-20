@@ -19,7 +19,13 @@ COPY --from=build --chown=appuser:appuser /app/src ./src
 COPY --chown=appuser:appuser docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENV DJANGO_SETTINGS_MODULE=config.settings.prod \
-    GUNICORN_CMD_ARGS="--workers=3 --bind=0.0.0.0:8000 --timeout=60 --access-logfile - --error-logfile -" \
+    GUNICORN_CMD_ARGS="--workers=3 --bind=0.0.0.0:8000 --timeout=60 \
+ --access-logfile - \
+ --error-logfile - \
+ --access-logformat \
+ '{\"t\":\"%(t)s\",\"h\":\"%(h)s\",\"u\":\"%(u)s\",\"r\":\"%(r)s\",\
+ \"s\":\"%(s)s\",\"b\":\"%(b)s\",\"D\":\"%(D)s\",\"f\":\"%(f)s\",\"a\":\"%(a)s\",\
+ \"request_id\":\"%({X-Request-ID}o)s\"}'" \
     PYTHONPATH="/app/src"
 EXPOSE 8000
 

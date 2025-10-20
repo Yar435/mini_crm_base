@@ -40,11 +40,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "core.middleware.RequestIDMiddleware",
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "core.middleware.RequestIDMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -223,20 +223,36 @@ SIMPLE_JWT = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "add_request_id": {
+            "()": "core.logging_filters.RequestIDFilter",
+        },
+    },
     "formatters": {
-        "simple": {"format": "%(levelname)s %(name)s: %(message)s"},
-        "verbose": {"format": "%(asctime)s %(levelname)s [%(name)s] %(message)s"},
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
+        },
+        # для локалки можно оставить и обычный формат при желании
     },
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["add_request_id"],
+            "formatter": "json",
+        },
     },
     "loggers": {
-        "django": {"handlers": ["console"], "level": "INFO"},
-        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # твой проект
         "core": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "clients": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "deals": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
-    "root": {"handlers": ["console"], "level": "WARNING"},
+    "root": {"handlers": ["console"], "level": "INFO"},
 }
+
 
 # --- Sentry ---
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")

@@ -22,6 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install deps
         run: |
@@ -31,15 +32,14 @@ jobs:
       - name: Migrate
         run: python src/manage.py migrate --noinput
 
-      -   name: Django deploy checks (prod settings)
-          env:
-              DJANGO_SETTINGS_MODULE: config.settings.prod
-              SECRET_KEY: dummy
-              ALLOWED_HOSTS: 127.0.0.1,localhost
-              DATABASE_URL: postgresql://app:app@localhost:5432/app
-              REDIS_URL: redis://localhost:6379/1
-          run: |
-              python src/manage.py check --deploy
+      - name: Django deploy checks (prod settings)
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          SECRET_KEY: dummy
+          ALLOWED_HOSTS: 127.0.0.1,localhost
+          DATABASE_URL: postgresql://app:app@localhost:5432/app
+          REDIS_URL: redis://localhost:6379/1
+        run: python src/manage.py check --deploy
 
       - name: Run tests
         run: pytest -q
@@ -59,7 +59,6 @@ jobs:
           root = tree.getroot()
           rate = float(root.attrib.get('line-rate', '0'))
           percent = int(rate * 100)
-
           def badge_color(p: int) -> str:
               if p >= 90: return "brightgreen"
               if p >= 80: return "green"
@@ -67,7 +66,6 @@ jobs:
               if p >= 60: return "yellow"
               if p >= 50: return "orange"
               return "red"
-
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write(f"coverage={percent}\n")
               f.write(f"color={badge_color(percent)}\n")
@@ -84,88 +82,110 @@ jobs:
           color: ${{ steps.coverage.outputs.color }}
 
   build_and_smoke:
-      runs-on: ubuntu-latest
-      needs: test
-      steps:
-          -   uses: actions/checkout@v4
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
 
-          # 1) Проверяем доступность Docker Hub
-          -   name: Check Docker Hub availability
-              id: dhub
-              run: |
-                  code=$(curl -s -o /dev/null -w "%{http_code}" https://registry-1.docker.io/v2/)
-                  echo "status=$code" >> "$GITHUB_OUTPUT"
-                  if [ "$code" = "200" ]; then
-                    echo "ok=true"  >> "$GITHUB_OUTPUT"
-                  else
-                    echo "ok=false" >> "$GITHUB_OUTPUT"
-                  fi
+      - name: Cleanup from previous runs (best-effort)
+        run: |
+          docker rm -f web pg redis 2>/dev/null || true
+          docker network rm appnet 2>/dev/null || true
 
-          # 2) Билдим образ ТОЛЬКО если Hub доступен
-          -   name: Build app image (prod target)
-              if: steps.dhub.outputs.ok == 'true'
-              env:
-                  DOCKER_BUILDKIT: "0"   # отключаем BuildKit, чтобы не тянуть docker/dockerfile:1
-              run: docker build --target=prod -t mini_crm_base:ci .
+      # 1) Проверяем доступность Docker Hub
+      - name: Check Docker Hub availability
+        id: dhub
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://registry-1.docker.io/v2/)
+          echo "status=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ]; then
+            echo "ok=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
 
-          # 3) Поднимаем Postgres/Redis из GHCR (не с Docker Hub)
-          -   name: Start Postgres & Redis (GHCR Bitnami)
-              if: steps.dhub.outputs.ok == 'true'
-              run: |
-                  docker network create appnet
+      # 2) Билдим образ ТОЛЬКО если Hub доступен
+      - name: Build app image (prod target)
+        if: steps.dhub.outputs.ok == 'true'
+        env:
+          DOCKER_BUILDKIT: "0"   # не тянуть docker/dockerfile:1
+        run: docker build --target=prod -t mini_crm_base:ci .
 
-                  docker run -d --rm --name pg \
-                    --network appnet \
-                    -e POSTGRESQL_USERNAME=app \
-                    -e POSTGRESQL_PASSWORD=app \
-                    -e POSTGRESQL_DATABASE=app \
-                    -p 5432:5432 \
-                    ghcr.io/bitnami/postgresql:16
+      # 3) Поднимаем Postgres/Redis из GHCR (устойчивее, чем Hub)
+      - name: Start Postgres & Redis (GHCR Bitnami)
+        if: steps.dhub.outputs.ok == 'true'
+        run: |
+          docker network create appnet
 
-                  docker run -d --rm --name redis \
-                    --network appnet \
-                    -e ALLOW_EMPTY_PASSWORD=yes \
-                    -p 6379:6379 \
-                    ghcr.io/bitnami/redis:7
+          docker run -d --rm --name pg \
+            --network appnet \
+            -e POSTGRESQL_USERNAME=app \
+            -e POSTGRESQL_PASSWORD=app \
+            -e POSTGRESQL_DATABASE=app \
+            -p 5432:5432 \
+            ghcr.io/bitnami/postgresql:16
 
-                  echo "⏳ Wait for Postgres..."
-                  for i in {1..60}; do
-                    docker exec pg bash -lc "pg_isready -U app" && break
-                    sleep 1
-                  done
+          docker run -d --rm --name redis \
+            --network appnet \
+            -e ALLOW_EMPTY_PASSWORD=yes \
+            -p 6379:6379 \
+            ghcr.io/bitnami/redis:7
 
-          # 4) Стартуем web и делаем /health smoke
-          -   name: Run web container & probe /health
-              if: steps.dhub.outputs.ok == 'true'
-              run: |
-                  docker run -d --rm --name web \
-                    --network appnet \
-                    -e DATABASE_URL=postgresql://app:app@pg:5432/app \
-                    -e REDIS_URL=redis://redis:6379/1 \
-                    -e CELERY_BROKER_URL=redis://redis:6379/1 \
-                    -e CELERY_RESULT_BACKEND=redis://redis:6379/1 \
-                    -e DJANGO_SETTINGS_MODULE=config.settings.prod \
-                    -p 8000:8000 \
-                    mini_crm_base:ci
+          echo "⏳ Wait for Postgres..."
+          for i in {1..60}; do
+            docker exec pg bash -lc "pg_isready -U app" && break
+            sleep 1
+          done
 
-                  echo "⏳ Waiting for /health to be 200..."
-                  for i in {1..30}; do
-                    code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/)
-                    if [ "$code" = "200" ]; then
-                      echo "✅ Health OK"
-                      exit 0
-                    fi
-                    sleep 2
-                  done
+      # 4) Стартуем web и делаем /health smoke
+      - name: Run web container & probe /health
+        if: steps.dhub.outputs.ok == 'true'
+        run: |
+          docker run -d --rm --name web \
+            --network appnet \
+            -e DATABASE_URL=postgresql://app:app@pg:5432/app \
+            -e REDIS_URL=redis://redis:6379/1 \
+            -e CELERY_BROKER_URL=redis://redis:6379/1 \
+            -e CELERY_RESULT_BACKEND=redis://redis:6379/1 \
+            -e DJANGO_SETTINGS_MODULE=config.settings.prod \
+            -p 8000:8000 \
+            mini_crm_base:ci
 
-                  echo "❌ Health check failed. Logs:"
-                  docker logs web || true
-                  exit 1
+          echo "⏳ Waiting for /health to be 200..."
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/)
+            if [ "$code" = "200" ]; then
+              echo "✅ Health OK"
+              exit 0
+            fi
+            sleep 2
+          done
 
-          # 5) Красиво пишем, что smoke пропущен из-за 503 на Hub (job остаётся зеленой)
-          -   name: Skip note (Docker Hub is down)
-              if: steps.dhub.outputs.ok != 'true'
-              run: |
-                  echo "⚠️  Docker Hub unavailable (HTTP ${{ steps.dhub.outputs.status }})."
-                  echo "    Skipping container build & smoke test for this run."
-                  echo "    Unit tests and coverage already passed in 'test' job."
+          echo "❌ Health check failed. Logs (web/pg/redis):"
+          docker logs web || true
+          docker logs pg  || true
+          docker logs redis || true
+          exit 1
+
+      - name: Upload smoke logs (on failure)
+        if: failure() && steps.dhub.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs
+          path: |
+            /var/lib/docker/containers/**/*.log
+          if-no-files-found: ignore
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f web pg redis 2>/dev/null || true
+          docker network rm appnet 2>/dev/null || true
+
+      # 5) Красиво пишем, что smoke пропущен из-за 503 на Hub (job остаётся зеленой)
+      - name: Skip note (Docker Hub is down)
+        if: steps.dhub.outputs.ok != 'true'
+        run: |
+          echo "⚠️  Docker Hub unavailable (HTTP ${{ steps.dhub.outputs.status }})."
+          echo "    Skipping container build & smoke test for this run."
+          echo "    Unit tests and coverage already passed in 'test' job."

@@ -1,30 +1,37 @@
 from __future__ import annotations
-
+import logging
 from django.conf import settings
 from django.db import connections, transaction
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
+from .request_id import get_request_id
 
 from core.metrics import health_hits_total
 from core.models import UserSecurityProfile
 from core.serializers import DetailResponseSerializer
+
 
 try:
     import redis  # type: ignore
 except Exception:
     redis = None
 
+logger = logging.getLogger(__name__)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def health(request):
-    """
-    Shallow health: всегда 200 OK, без внешних зависимостей.
-    Нужен для тестов/балансировщиков типа "жив ли процесс".
-    """
-    return JsonResponse({"status": "ok"}, status=200)
+    data = {
+        "status": "ok",
+        "request_id": get_request_id(),
+    }
+    return Response(data, status=status.HTTP_200_OK)
 
 
 def ready(request):

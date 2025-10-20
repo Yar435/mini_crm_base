@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # ждём БД (если указана)
 if [ -n "$POSTGRES_HOST" ]; then

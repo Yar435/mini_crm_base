@@ -73,3 +73,4 @@ django-ratelimit==4.1.0
 ratelimit==2.2.1
 django-prometheus==2.4.1
 future==1.0.0
+python-json-logger==2.0.7
