@@ -2,111 +2,147 @@ name: CI
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "**" ]
+    branches: ["**"]
 
 jobs:
+  # Быстрые тесты (SQLite, без внешних сервисов)
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: app
-          POSTGRES_USER: app
-          POSTGRES_PASSWORD: app
-        ports: [ "5432:5432" ]
-        options: >-
-          --health-cmd="pg_isready -U app" --health-interval=5s --health-timeout=5s --health-retries=5
-      redis:
-        image: redis:7-alpine
-        ports: [ "6379:6379" ]
     env:
-      DATABASE_URL: postgresql://app:app@localhost:5432/app
-      REDIS_URL: redis://localhost:6379/1
-      CELERY_BROKER_URL: redis://localhost:6379/1
-      CELERY_RESULT_BACKEND: redis://localhost:6379/1
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DJANGO_SETTINGS_MODULE: config.settings.test
       PYTHONPATH: src
       SECRET_KEY: dummy
       ALLOWED_HOSTS: 127.0.0.1,localhost
+      HEALTH_STRICT_DEFAULT: "false"
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with:
+          python-version: "3.11"
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+
       - name: Migrate
         run: python src/manage.py migrate --noinput
-      -   name: Run tests
-          env:
-              DJANGO_SETTINGS_MODULE: config.settings.prod
-              HEALTH_STRICT_DEFAULT: "false"   # на всякий случай, если pytest.ini не подхватится
-          run: pytest -q
+
+      - name: Run tests
+        run: pytest -q
+
       - name: Upload coverage.xml
         uses: actions/upload-artifact@v4
-        with: { name: coverage-xml, path: coverage.xml }
-      -   name: Extract coverage percent
-          id: coverage
-          run: |
-                  python - << 'PY'
-                  import os, xml.etree.ElementTree as ET
-                  tree = ET.parse('coverage.xml')
-                  root = tree.getroot()
-                  rate = float(root.attrib.get('line-rate', '0'))
-                  percent = int(rate * 100)
+        with:
+          name: coverage-xml
+          path: coverage.xml
 
-                  def badge_color(p: int) -> str:
-                    if p >= 90: return "brightgreen"
-                    if p >= 80: return "green"
-                    if p >= 70: return "yellowgreen"
-                    if p >= 60: return "yellow"
-                    if p >= 50: return "orange"
-                    return "red"
+      - name: Extract coverage percent
+        id: coverage
+        run: |
+          python - << 'PY'
+          import os, xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          rate = float(root.attrib.get('line-rate', '0'))
+          percent = int(rate * 100)
 
-                  gh_out = os.environ["GITHUB_OUTPUT"]
-                  with open(gh_out, "a", encoding="utf-8") as f:
-                    f.write(f"coverage={percent}\n")
-                    f.write(f"color={badge_color(percent)}\n")
-                  PY
+          def badge_color(p: int) -> str:
+              if p >= 90: return "brightgreen"
+              if p >= 80: return "green"
+              if p >= 70: return "yellowgreen"
+              if p >= 60: return "yellow"
+              if p >= 50: return "orange"
+              return "red"
 
-      -   name: Upload coverage badge to gist
-          uses: schneegans/dynamic-badges-action@v1.7.0
-          with:
-              auth: ${{ secrets.GIST_TOKEN }}
-              gistID: e717d3682a0aef086b4a673a8683c47a
-              filename: coverage.json
-              label: coverage
-              message: "${{ steps.coverage.outputs.coverage }}%"
-              color: ${{ steps.coverage.outputs.color }}
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"coverage={percent}\n")
+              f.write(f"color={badge_color(percent)}\n")
+          PY
 
+      - name: Upload coverage badge to gist
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}           # токен с правом gist:write
+          gistID: e717d3682a0aef086b4a673a8683c47a # твой Gist ID
+          filename: coverage.json
+          label: coverage
+          message: "${{ steps.coverage.outputs.coverage }}%"
+          color: ${{ steps.coverage.outputs.color }}
+
+  # Smoke: собираем образ и проверяем /health на реальном окружении
   build_and_smoke:
     runs-on: ubuntu-latest
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build app image (prod target)
         run: docker build --target=prod -t mini_crm_base:ci .
-      - name: Start deps
+
+      # Поднимаем Postgres и Redis из GHCR (Bitnami), чтобы не ходить на Docker Hub
+      - name: Start Postgres & Redis (GHCR Bitnami)
         run: |
-          docker run -d --name db -e POSTGRES_DB=app -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app -p 5432:5432 postgres:16-alpine
-          docker run -d --name redis -p 6379:6379 redis:7-alpine
-          for i in {1..30}; do docker exec db pg_isready -U app && break; sleep 1; done
-      - name: Run web
+          docker network create appnet
+
+          docker run -d --rm --name pg \
+            --network appnet \
+            -e POSTGRESQL_USERNAME=app \
+            -e POSTGRESQL_PASSWORD=app \
+            -e POSTGRESQL_DATABASE=app \
+            -p 5432:5432 \
+            ghcr.io/bitnami/postgresql:16
+
+          docker run -d --rm --name redis \
+            --network appnet \
+            -e ALLOW_EMPTY_PASSWORD=yes \
+            -p 6379:6379 \
+            ghcr.io/bitnami/redis:7
+
+          echo "⏳ Wait for Postgres..."
+          for i in {1..60}; do
+            docker exec pg bash -lc "pg_isready -U app" && break
+            sleep 1
+          done
+
+      - name: Run web container & probe /health
         run: |
-          docker run -d --name web \
-            --link db --link redis \
-            -e DATABASE_URL=postgresql://app:app@db:5432/app \
+          docker run -d --rm --name web \
+            --network appnet \
+            -e DATABASE_URL=postgresql://app:app@pg:5432/app \
             -e REDIS_URL=redis://redis:6379/1 \
             -e CELERY_BROKER_URL=redis://redis:6379/1 \
             -e CELERY_RESULT_BACKEND=redis://redis:6379/1 \
             -e DJANGO_SETTINGS_MODULE=config.settings.prod \
-            -p 8000:8000 mini_crm_base:ci
+            -p 8000:8000 \
+            mini_crm_base:ci
+
+          echo "⏳ Wait for /health to be 200..."
           for i in {1..30}; do
-            if curl -fsS http://localhost:8000/health/ >/dev/null; then exit 0; fi
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/)
+            if [ "$code" = "200" ]; then
+              echo "✅ Health OK"
+              exit 0
+            fi
             sleep 2
           done
-          echo "Health check failed"; docker logs web; exit 1
+
+          echo "❌ Health check failed. Logs:"
+          docker logs web || true
+          exit 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "---- web logs ----"
+          docker logs web || true
+          echo "---- pg logs ----"
+          docker logs pg || true
+          echo "---- redis logs ----"
+          docker logs redis || true
