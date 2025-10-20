@@ -52,25 +52,37 @@ jobs:
       -   name: Extract coverage percent
           id: coverage
           run: |
-              python - << 'PY'
-              import xml.etree.ElementTree as ET
-              tree = ET.parse('coverage.xml')
-              root = tree.getroot()
-              rate = float(root.attrib.get('line-rate', '0'))
-              percent = int(rate * 100)
-              print(f"::set-output name=coverage::{percent}")
-              PY
+                  python - << 'PY'
+                  import os, xml.etree.ElementTree as ET
+                  tree = ET.parse('coverage.xml')
+                  root = tree.getroot()
+                  rate = float(root.attrib.get('line-rate', '0'))
+                  percent = int(rate * 100)
+
+                  def badge_color(p: int) -> str:
+                    if p >= 90: return "brightgreen"
+                    if p >= 80: return "green"
+                    if p >= 70: return "yellowgreen"
+                    if p >= 60: return "yellow"
+                    if p >= 50: return "orange"
+                    return "red"
+
+                  gh_out = os.environ["GITHUB_OUTPUT"]
+                  with open(gh_out, "a", encoding="utf-8") as f:
+                    f.write(f"coverage={percent}\n")
+                    f.write(f"color={badge_color(percent)}\n")
+                  PY
 
       -   name: Upload coverage badge to gist
-          # if: github.ref == 'refs/heads/main'   # Бейдж обновляем только для main; можно убрать условие, если надо для develop
+          # if: github.ref == 'refs/heads/main'   # включи, если хочешь обновлять бейдж только с main
           uses: schneegans/dynamic-badges-action@v1.7.0
           with:
               auth: ${{ secrets.GIST_TOKEN }}
-              gistID: e717d3682a0aef086b4a673a8683c47a
+              gistID: e717d3682a0aef086b4a673a8683c47a       # твой Gist ID
               filename: coverage.json
               label: coverage
               message: "${{ steps.coverage.outputs.coverage }}%"
-              color: ${{ fromJSON('["red","orange","yellow","yellowgreen","green","brightgreen"]')[ (steps.coverage.outputs.coverage >= 90) * 5 + (steps.coverage.outputs.coverage >= 80) * 4 + (steps.coverage.outputs.coverage >= 70) * 3 + (steps.coverage.outputs.coverage >= 60) * 2 + (steps.coverage.outputs.coverage >= 50) * 1 ] }}
+              color: ${{ steps.coverage.outputs.color }}
 
   build_and_smoke:
     runs-on: ubuntu-latest
