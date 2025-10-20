@@ -5,3 +5,14 @@ yar435@yandex.ru
 grafana
 admin
 4351
+
+
+CI smoke-тест (docker up + curl /health).
+
+JSON-логи + request_id в middleware.
+
+(по желанию) RBAC или простая ACL-модель для демонстрации ролей.
+
+Чистка и структурирование репозитория (docs/, ops/, src/).
+
+Подготовка “developer onboarding” — как запустить за 5 минут.
