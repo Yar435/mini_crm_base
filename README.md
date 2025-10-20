@@ -2,11 +2,30 @@
 
 
 
-![CI](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Yar435/your-gist-id/raw/coverage-badge.json)
-[![CI](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml)
+[![Build](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml/badge.svg)](https://github.com/Yar435/mini_crm_base/actions/workflows/ci.yml)
+[![Coverage Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Yar435/e717d3682a0aef086b4a673a8683c47a/raw/coverage.json)](https://github.com/Yar435/mini_crm_base/actions)
+[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)]()
+[![Django](https://img.shields.io/badge/Django-5.0+-green.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 
+## 🚀 Quick Start
+
+```bash
+# 1. Клонируем
+git clone https://github.com/Yar435/mini_crm_base.git
+cd mini_crm_base
+
+# 2. Запускаем (Docker Compose)
+docker compose up --build
+
+# 3. Проверяем сервисы
+open http://localhost:8000/api/docs/
+open http://localhost:8000/metrics
+open http://localhost:5555  # Flower
+open http://localhost:9090  # Prometheus
+open http://localhost:3000  # Grafana
+```
 
 Учебно-разработческая база проекта **mini_crm_base** — Django + Django REST Framework, с докером, тестами и линтерами.
 Предназначен как стартовая заготовка для GraphScope и других интеграций с amoCRM.

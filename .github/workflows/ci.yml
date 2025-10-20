@@ -49,6 +49,28 @@ jobs:
       - name: Upload coverage.xml
         uses: actions/upload-artifact@v4
         with: { name: coverage-xml, path: coverage.xml }
+      -   name: Extract coverage percent
+          id: coverage
+          run: |
+              python - << 'PY'
+              import xml.etree.ElementTree as ET
+              tree = ET.parse('coverage.xml')
+              root = tree.getroot()
+              rate = float(root.attrib.get('line-rate', '0'))
+              percent = int(rate * 100)
+              print(f"::set-output name=coverage::{percent}")
+              PY
+
+      -   name: Upload coverage badge to gist
+          # if: github.ref == 'refs/heads/main'   # Бейдж обновляем только для main; можно убрать условие, если надо для develop
+          uses: schneegans/dynamic-badges-action@v1.7.0
+          with:
+              auth: ${{ secrets.GIST_TOKEN }}
+              gistID: e717d3682a0aef086b4a673a8683c47a
+              filename: coverage.json
+              label: coverage
+              message: "${{ steps.coverage.outputs.coverage }}%"
+              color: ${{ fromJSON('["red","orange","yellow","yellowgreen","green","brightgreen"]')[ (steps.coverage.outputs.coverage >= 90) * 5 + (steps.coverage.outputs.coverage >= 80) * 4 + (steps.coverage.outputs.coverage >= 70) * 3 + (steps.coverage.outputs.coverage >= 60) * 2 + (steps.coverage.outputs.coverage >= 50) * 1 ] }}
 
   build_and_smoke:
     runs-on: ubuntu-latest
