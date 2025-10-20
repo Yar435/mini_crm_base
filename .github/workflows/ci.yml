@@ -74,7 +74,6 @@ jobs:
                   PY
 
       -   name: Upload coverage badge to gist
-          # if: github.ref == 'refs/heads/main'   # включи, если хочешь обновлять бейдж только с main
           uses: schneegans/dynamic-badges-action@v1.7.0
           with:
               auth: ${{ secrets.GIST_TOKEN }}
