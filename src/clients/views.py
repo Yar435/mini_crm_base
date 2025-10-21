@@ -3,7 +3,10 @@ from drf_spectacular.utils import (
     extend_schema,
     extend_schema_view,
 )
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
+
+from core.permissions import DenyReadonlyOnCreate, HasModelPermission
 
 from .models import Client
 from .serializers import ClientSerializer
@@ -59,13 +62,14 @@ from .serializers import ClientSerializer
 class ClientViewSet(ModelViewSet):
     queryset = Client.objects.all().order_by("-id")
     serializer_class = ClientSerializer
+    permission_classes = [HasModelPermission]
+    permission_model = Client
 
-    # точные поля для filter=? (django-filter)
-    filterset_fields = ["name", "email"]
-
-    # полнотекстовый поиск: ?search=...
-    search_fields = ["name", "email"]
-
-    # сортировка: ?ordering=... (поддерживает - поле)
-    ordering_fields = ["id", "name", "created_at"]
-    ordering = ["-id"]  # значение по умолчанию
+    def get_permissions(self):
+        # Для создания клиента:
+        if self.request.method == "POST":
+            # 1) должен быть аутентифицирован
+            # 2) не должен быть в группе "readonly"
+            return [IsAuthenticated(), DenyReadonlyOnCreate()]
+        # Для всего остального оставляем строгость по модельным правам
+        return [HasModelPermission()]

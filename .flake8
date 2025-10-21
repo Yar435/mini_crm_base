@@ -4,3 +4,4 @@ extend-ignore = E203, W503
 per-file-ignores =
     src/config/settings/dev.py:F403,F405
     src/config/settings/prod.py:F403,F405
+    src/config/settings/test.py:F403,F405

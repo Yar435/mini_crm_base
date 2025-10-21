@@ -1,29 +1,50 @@
 from __future__ import annotations
+
 import logging
-from django.conf import settings
-from django.db import connections, transaction
-from django.http import JsonResponse
-from drf_spectacular.utils import extend_schema
+from types import ModuleType
+from typing import Optional
+
+from django.db import transaction
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
-from .request_id import get_request_id
 
 from core.metrics import health_hits_total
 from core.models import UserSecurityProfile
 from core.serializers import DetailResponseSerializer
 
+from .request_id import get_request_id
 
 try:
-    import redis  # type: ignore
+    import redis as _redis  # type: ignore[import-not-found]
 except Exception:
-    redis = None
+    _redis = None
+
+redis: Optional[ModuleType] = _redis
 
 logger = logging.getLogger(__name__)
 
+
+class HealthResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    request_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+
+class ReadyChecksSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["ok", "fail"])
+    checks = serializers.DictField(child=serializers.CharField())
+
+
+@extend_schema(
+    methods=["GET"],
+    tags=["System"],
+    summary="Простой health-check",
+    auth=None,
+    responses={200: HealthResponseSerializer},
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request):
@@ -32,46 +53,6 @@ def health(request):
         "request_id": get_request_id(),
     }
     return Response(data, status=status.HTTP_200_OK)
-
-
-def ready(request):
-    """
-    Deep health (включается по желанию в prod): проверяем БД, Redis.
-    Отдаём 200/503 в зависимости от готовности.
-    """
-    strict = getattr(settings, "HEALTH_STRICT", False)
-    if not strict:
-        # Даже если дернули /ready без strict — считаем ок
-        return JsonResponse({"status": "ok", "checks": {"note": "strict disabled"}}, status=200)
-
-    checks = {}
-    ok = True
-
-    # DB
-    try:
-        connections["default"].cursor()
-        checks["db"] = "ok"
-    except Exception as e:
-        ok = False
-        checks["db"] = f"error: {e!s}"
-
-    # Redis (если настроен)
-    redis_url = getattr(settings, "CELERY_BROKER_URL", None) or getattr(settings, "REDIS_URL", None)
-    if redis_url and redis:
-        try:
-            r = redis.Redis.from_url(redis_url)
-            r.ping()
-            checks["redis"] = "ok"
-        except Exception as e:
-            ok = False
-            checks["redis"] = f"error: {e!s}"
-    elif redis_url and not redis:
-        # библиотека не установлена
-        checks["redis"] = "skipped (redis lib not installed)"
-
-    return JsonResponse(
-        {"status": "ok" if ok else "fail", "checks": checks}, status=200 if ok else 503
-    )
 
 
 class LogoutView(APIView):
@@ -98,17 +79,16 @@ class LogoutView(APIView):
         return Response({"detail": "logged out"})
 
 
-@extend_schema(exclude=True)
-@api_view(["GET"])
-@permission_classes([IsAdminUser])
-def debug_sentry(request):
-    1 / 0
-
-
 class HealthView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        tags=["System"],
+        summary="Health (классическая вью)",
+        auth=None,
+        responses=OpenApiResponse(response=HealthResponseSerializer),
+    )
     def get(self, request):
         health_hits_total.inc()
         return Response({"status": "ok"}, status=200)

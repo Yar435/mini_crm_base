@@ -1,4 +1,5 @@
 import re
+
 from rest_framework.test import APIClient
 
 
@@ -9,4 +10,4 @@ def test_request_id_echo():
     assert "X-Request-ID" in resp  # заголовок
     rid = resp["X-Request-ID"]
     assert re.fullmatch(r"[0-9a-f]{32}", rid)  # uuid4.hex
-    assert resp.data.get("request_id") == rid   # тело тоже эхо для удобства
+    assert resp.data.get("request_id") == rid  # тело тоже эхо для удобства

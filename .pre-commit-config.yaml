@@ -41,3 +41,58 @@ repos:
         entry: python src/manage.py spectacular --settings=config.settings.dev --validate --fail-on-warn --file src/schema.yaml
         pass_filenames: false
         stages: [pre-commit, manual]
+
+  -   repo: https://github.com/PyCQA/bandit
+      rev: 1.7.9
+      hooks:
+        -   id: bandit
+            name: bandit
+            pass_filenames: false          # <-- ключевая строка
+            args:
+              - -r
+              - src
+              - -x
+              - src/tests,migrations       # исключи тесты и миграции
+              - -iii
+              - -ll
+
+  -   repo: local
+      hooks:
+          -   id: safety
+              name: Safety (dependency audit)
+              entry: safety check --full-report
+              language: system
+              types: [ python ]
+              pass_filenames: false
+              args:
+                  - -r
+                  - requirements-dev.txt
+                  - --full-report
+
+#  -   repo: https://github.com/pre-commit/mirrors-mypy
+#      rev: v1.11.2
+#      hooks:
+#          -   id: mypy
+#              additional_dependencies:
+#                - django
+#                - djangorestframework
+#                - django-stubs
+#                - djangorestframework-stubs
+#                - python-dotenv
+#                - celery
+#                - redis
+#                - django-filter
+#                - drf-spectacular
+#                - drf_spectacular_sidecar
+#                - dj-database-url
+#                - sentry-sdk
+#                - djangorestframework-simplejwt
+#                - django-ratelimit
+#                - django-debug-toolbar
+#                - pytest
+#                - django-prometheus
+#                - ratelimit
+#              args:
+#                  - --config-file=pyproject.toml
+#                  - --exclude
+#                  - '(^|.*/)?context_files\.py$'

@@ -19,6 +19,7 @@ exclude = [".git", "__pycache__", ".venv", "venv", ".mypy_cache"]
 per-file-ignores = [
     "__init__.py:F401",
     "src/config/settings/dev.py:F403,F405",
+    "src/config/settings/test.py:F403,F405",
 ]
 
 [tool.pytest.ini_options]
@@ -34,3 +35,34 @@ source = ["src"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[tool.mypy]
+python_version = "3.11"
+plugins = [
+  "mypy_django_plugin.main",
+  "mypy_drf_plugin.main",
+]
+mypy_path = "src"
+show_error_codes = true
+follow_imports = "normal"
+exclude = '(^src/.*/migrations/)|(^|.*/)?context_files\.py$'
+
+[[tool.mypy.overrides]]
+module = [
+  "celery", "celery.*", "celery.schedules",
+  "django_ratelimit", "django_ratelimit.*",
+  "debug_toolbar", "debug_toolbar.*",
+]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.bandit]
+exclude_dirs = ["venv", ".venv", "env", ".env", "migrations", "tests"]
+skips = ["B101"] # assert в тестах; расширишь по ситуации
+severity = "MEDIUM"
+confidence = "HIGH"
+
+[tool.safety]
+ignore-vulns = []

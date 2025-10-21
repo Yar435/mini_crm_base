@@ -1,22 +1,37 @@
+from typing import Any, MutableMapping, cast
+
 from .base import *
-import copy
 
 DEBUG = True
+
+RF = cast(MutableMapping[str, Any], REST_FRAMEWORK)
+LG = cast(MutableMapping[str, Any], LOGGING)
+
+# Примеры модификаций — меняем через алиасы:
+RF.setdefault("DEFAULT_AUTHENTICATION_CLASSES", [])
+RF["DEFAULT_AUTHENTICATION_CLASSES"] = [
+    "rest_framework_simplejwt.authentication.JWTAuthentication",
+]
+
+# если модифицируешь пагинацию/рендереры/прочее — тоже через RF[...] = ...
+
+# Тестовая БД SQLite — строго строка, не Path:
+DATABASES["default"]["NAME"] = str(BASE_DIR / "test.sqlite3")
 
 # ✅ Тестовая БД — всегда SQLite (никаких сетевых коннектов)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "test.sqlite3",
+        "NAME": str(BASE_DIR / "test.sqlite3"),
     }
 }
 
 # ✅ Кэш — в память
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+#     }
+# }
 
 # ✅ Celery — синхронно/в памяти (без Redis)
 CELERY_TASK_ALWAYS_EAGER = True
@@ -25,7 +40,7 @@ CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 
 # ✅ Логи — попроще в тестах (без JSON-форматтера)
-LOGGING = copy.deepcopy(LOGGING)  # чтобы не мутировать базовые настройки
+# LOGGING = copy.deepcopy(LOGGING)  # чтобы не мутировать базовые настройки
 
 fmt = "%(levelname)s %(name)s:%(lineno)d %(message)s"
 

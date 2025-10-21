@@ -1,6 +1,7 @@
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.viewsets import ModelViewSet
+
+from core.permissions import HasModelPermission
 
 from .models import Deal, Manager
 from .serializers import DealSerializer, ManagerSerializer
@@ -25,7 +26,6 @@ from .serializers import DealSerializer, ManagerSerializer
     destroy=extend_schema(summary="Удалить сделку", tags=["Deals"]),
 )
 class DealViewSet(ModelViewSet):
-    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = (
         Deal.objects.select_related(
             "client",
@@ -35,6 +35,8 @@ class DealViewSet(ModelViewSet):
         .order_by("-id")
     )
     serializer_class = DealSerializer
+    permission_classes = [HasModelPermission]
+    permission_model = Deal
 
     filterset_fields = ["status", "client", "manager"]
     search_fields = ["title", "client__name", "manager__name"]
@@ -84,6 +86,9 @@ class DealViewSet(ModelViewSet):
 class ManagerViewSet(ModelViewSet):
     queryset = Manager.objects.all().order_by("-id")
     serializer_class = ManagerSerializer
+    permission_classes = [HasModelPermission]
+    permission_model = Manager
+
     filterset_fields = ["name", "email"]
     search_fields = ["name", "email"]
     ordering_fields = ["id", "name", "created_at"]

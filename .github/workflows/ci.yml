@@ -29,6 +29,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Security (bandit)
+        run: bandit -q -r src
+
+      - name: Security (safety)
+        run: safety check --full-report || true
+
+      - name: Type check (mypy)
+        run: mypy || true
+
       - name: Migrate
         run: python src/manage.py migrate --noinput
 

@@ -1,11 +1,11 @@
 import uuid
 
 from django.utils.deprecation import MiddlewareMixin
-from .request_id import set_request_id, get_request_id
 
+from .request_id import get_request_id, set_request_id
 
-REQUEST_ID_HEADER_IN  = "HTTP_X_REQUEST_ID"     # входящее имя у Django (с HTTP_)
-REQUEST_ID_HEADER_OUT = "X-Request-ID"          # что отдадим наружу
+REQUEST_ID_HEADER_IN = "HTTP_X_REQUEST_ID"  # входящее имя у Django (с HTTP_)
+REQUEST_ID_HEADER_OUT = "X-Request-ID"  # что отдадим наружу
 
 
 class RequestIDMiddleware(MiddlewareMixin):
