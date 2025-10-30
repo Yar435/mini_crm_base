@@ -18,7 +18,7 @@ RUN pip install --upgrade pip \
   && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
 
 # ---------- Final runtime ----------
-FROM python:3.11-slim AS runtime
+FROM python:3.11-slim AS prod
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

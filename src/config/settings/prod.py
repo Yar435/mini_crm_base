@@ -1,44 +1,38 @@
 import os
-
-from .base import *
+from .base import *  # noqa
 
 DEBUG = False
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "set-me")
-ALLOWED_HOSTS = [
-    h
-    for h in os.getenv(
-        "ALLOWED_HOSTS",
-        "127.0.0.1,localhost",
-    ).split(",")
-    if h
-]
-INTERNAL_IPS = []  # не нужно в prod
 
-# Статика: простейший вариант — WhiteNoise (потом можно отдать через Nginx)
-INSTALLED_APPS += ["whitenoise.runserver_nostatic"]
-MIDDLEWARE = ["whitenoise.middleware.WhiteNoiseMiddleware"] + MIDDLEWARE
+
+def _split_hosts(raw: str) -> list[str]:
+    return [host.strip() for host in raw.split(",") if host.strip()]
+
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "set-me")
+ALLOWED_HOSTS = _split_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", "localhost"))
+INTERNAL_IPS = []
+
 STATIC_URL = "/static/"
 STATIC_ROOT = "/app/staticfiles"
-WHITENOISE_USE_FINDERS = True
 
-# Базовая безопасность (при реальном домене расширим)
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-HOSTS = ("127.0.0.1", "localhost")
-SECURE_HSTS_SECONDS = 3600
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
-SECURE_SSL_REDIRECT = True  # только если за reverse-proxy с TLS
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-CSRF_TRUSTED_ORIGINS = (
-    os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
-)
+SESSION_COOKIE_SECURE = _env_flag("SESSION_COOKIE_SECURE", True)
+CSRF_COOKIE_SECURE = _env_flag("CSRF_COOKIE_SECURE", True)
+SECURE_SSL_REDIRECT = _env_flag("SECURE_SSL_REDIRECT", False)
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_flag("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
+SECURE_HSTS_PRELOAD = _env_flag("SECURE_HSTS_PRELOAD", True)
 
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
-
-SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "0") == "1"
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
-CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "0") == "1"
+CSRF_TRUSTED_ORIGINS = _split_hosts(os.getenv("CSRF_TRUSTED_ORIGINS", ""))

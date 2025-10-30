@@ -22,14 +22,16 @@ PY
   done
 fi
 
+MANAGE_CMD=${MANAGE_CMD:-"python src/manage.py"}
+
 echo "[entrypoint] migrate"
-python manage.py migrate --noinput
+$MANAGE_CMD migrate --noinput
 
 echo "[entrypoint] setup RBAC"
-python manage.py setup_rbac || true
+$MANAGE_CMD setup_rbac || true
 
 echo "[entrypoint] collectstatic"
-python manage.py collectstatic --noinput
+$MANAGE_CMD collectstatic --noinput
 
 echo "[entrypoint] starting app"
 exec "$@"

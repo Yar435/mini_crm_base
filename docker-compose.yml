@@ -10,7 +10,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -37,9 +37,6 @@ services:
         condition: service_started
 
   worker:
-    build:
-      context: .
-      target: prod
     image: mini_crm_base:prod
     env_file: .env.prod
     environment:
@@ -51,15 +48,12 @@ services:
         condition: service_started
     entrypoint: ["sh", "-lc", "cd /app/src && celery -A config worker -l info -Q celery -n worker@%h -E"]
     healthcheck:
-        test: [ "CMD", "bash", "-lc", "celery -A config inspect ping -d worker@$$HOSTNAME | grep -q 'pong'" ]
+        test: ["CMD", "sh", "-lc", "celery -A config inspect ping -d worker@$${HOSTNAME} | grep -q 'pong'" ]
         interval: 15s
         timeout: 10s
         retries: 5
 
   beat:
-    build:
-      context: .
-      target: prod
     image: mini_crm_base:prod
     env_file: .env.prod
     environment:
@@ -72,9 +66,6 @@ services:
     entrypoint: ["sh", "-lc", "cd /app/src && celery -A config beat -l info"]
 
   flower:
-    build:
-      context: .
-      target: prod
     image: mini_crm_base:prod
     env_file: .env.prod
     environment:
@@ -111,8 +102,9 @@ services:
 
   celery-exporter:
       image: danihodovic/celery-exporter:latest   # или :latest
+      env_file: .env.prod
       environment:
-          CE_BROKER_URL: ${CELERY_BROKER_URL}        # например: redis://redis:6379/1
+          CE_BROKER_URL: ${CELERY_BROKER_URL}
           CE_LISTEN_ADDRESS: "0.0.0.0"
           CE_PORT: "9808"
           CE_NAMESPACE: "mini_crm"                   # опционально, метки

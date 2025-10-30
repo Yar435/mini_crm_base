@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
 *.sqlite3
 
 # Tools
@@ -23,27 +24,7 @@ Thumbs.db
 pass.txt
 
 # --- Obsidian vault rules ---
-# Игнорировать весь дневник (daily/weekly) и временные заметки:
-docs/obsidian/01_Journal/
-docs/obsidian/98_TemporaryMarkdowns/
-
-# Игнорировать локальное состояние Obsidian (рабочие окна/кэш):
-docs/obsidian/.obsidian/workspace.json
-docs/obsidian/.obsidian/workspace-mobile.json
-docs/obsidian/.obsidian/plugins/obsidian-git/data.json
-docs/obsidian/.obsidian/cache/
-docs/obsidian/.trash/
-
-# Разрешить к коммиту шаблоны, чек-листы, ресурсы и дорожную карту:
-!docs/obsidian/00_Roadmap/
-!docs/obsidian/02_Projects/
-!docs/obsidian/03_Checklists/
-!docs/obsidian/04_Resources/
-!docs/obsidian/99_Templates/
-!docs/obsidian/DevOps/
-!docs/obsidian/Django/
-!docs/obsidian/Context.md
-!docs/obsidian/Enough.md
-!docs/obsidian/Home.md
-!docs/obsidian/README.md
-!docs/obsidian/Полезный словарь.md
+docs/ObsidianVault/01_Journal/
+docs/ObsidianVault/98_TemporaryMarkdowns/
+docs/ObsidianVault/.obsidian/cache/
+docs/ObsidianVault/.trash/

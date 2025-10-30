@@ -7,11 +7,11 @@ INTERNAL_IPS = ["127.0.0.1", "localhost"]
 STATIC_URL = "/static/"
 STATIC_ROOT = "/app/staticfiles"
 
-INSTALLED_APPS = INSTALLED_APPS + ["django.contrib.staticfiles",]
+MIDDLEWARE = [
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    *MIDDLEWARE,
+]
 
-MIDDLEWARE = MIDDLEWARE + ["whitenoise.middleware.WhiteNoiseMiddleware"]
-
-# Дополнительно (опционально)
 WHITENOISE_AUTOREFRESH = True
 WHITENOISE_MAX_AGE = 0
 

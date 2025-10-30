@@ -254,22 +254,10 @@ LOGGING = {
 }
 
 
-# --- Sentry ---
+# --- Sentry (stub, integration disabled intentionally) ---
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
-
-if SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.celery import CeleryIntegration
-    from sentry_sdk.integrations.django import DjangoIntegration
-
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[DjangoIntegration(), CeleryIntegration()],
-        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),  # APM опц.
-        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
-        send_default_pii=False,
-        environment=os.getenv("ENV", "dev"),
-    )
+SENTRY_ENV = os.getenv("SENTRY_ENV", "dev")
+SENTRY_RELEASE = os.getenv("SENTRY_RELEASE", "")
 
 
 HEALTH_STRICT_DEFAULT = True
