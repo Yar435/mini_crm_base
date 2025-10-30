@@ -35,12 +35,12 @@ from pathlib import Path
 # Если BASE_PATH пустая строка -> стартуем от места где лежит этот файл.
 # BASE_PATH = "C:\\Users\\Yar43\\OneDrive\\Документы\\Obsidian Vault"
 # пример: "/home/user/projects" или "" для текущей папки скрипта
-BASE_PATH = "C:\\Users\\Yar43\\OneDrive\\Документы\\Obsidian Vault"
+BASE_PATH = ""
 # Режим отображения: "FULL" или "TRUNCATE"
 DISPLAY_MODE = "TRUNCATE"  # "FULL" or "TRUNCATE"
 
 # Ограничение X из описания: если (files+dirs) > X_LIMIT — применяем усечение
-X_LIMIT = 15  # X
+X_LIMIT = 20 # X
 
 # Если X_LIMIT - num_dirs <= 0 -> показываем FALLBACK_SHOW_FILES (Z)
 FALLBACK_SHOW_FILES = 2  # Z

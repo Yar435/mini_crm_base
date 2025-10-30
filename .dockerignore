@@ -1,11 +1,16 @@
 .git
-**/__pycache__/
-**/*.pyc
+.gitignore
+.gitattributes
+venv
 .env
 .env.*
+docs
+tests
+*.md
+coverage.xml
+pytest.ini
 .idea
 .vscode
-.mypy_cache
-.pytest_cache
-dist
-build
+
+# Обязательно разрешаем ops (если вдруг где-то вырезали ранее)
+!ops/**

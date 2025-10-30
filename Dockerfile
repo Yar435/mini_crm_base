@@ -1,32 +1,49 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11-slim AS base
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates netcat-traditional && rm -rf /var/lib/apt/lists/*
+# ---------- Base builder (install deps) ----------
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl netcat-openbsd \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY requirements-dev.txt ./requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
-RUN useradd -m appuser
+
+# requirements
+COPY requirements.txt /app/requirements.txt
+# requirements-dev.txt не копируем в прод образ
+RUN pip install --upgrade pip \
+  && pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
+
+# ---------- Final runtime ----------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+RUN adduser --disabled-password --gecos "" appuser
+WORKDIR /app
+
+# Ставим runtime wheels
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache /wheels/* && rm -rf /wheels
+
+# Копируем только то, что нужно приложению
+COPY src /app/src
+COPY ops/docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Директория для статики
+RUN mkdir -p /app/staticfiles && chown -R appuser:appuser /app
+
 USER appuser
-
-# dev-раздел можно добавить позже при желании
-FROM base AS build
-WORKDIR /app
-COPY --chown=appuser:appuser ./src ./src
-
-FROM base AS prod
-WORKDIR /app
-COPY --from=build --chown=appuser:appuser /app/src ./src
-COPY --chown=appuser:appuser docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENV DJANGO_SETTINGS_MODULE=config.settings.prod \
-    GUNICORN_CMD_ARGS="--workers=3 --bind=0.0.0.0:8000 --timeout=60 \
- --access-logfile - \
- --error-logfile - \
- --access-logformat \
- '{\"t\":\"%(t)s\",\"h\":\"%(h)s\",\"u\":\"%(u)s\",\"r\":\"%(r)s\",\
- \"s\":\"%(s)s\",\"b\":\"%(b)s\",\"D\":\"%(D)s\",\"f\":\"%(f)s\",\"a\":\"%(a)s\",\
- \"request_id\":\"%({X-Request-ID}o)s\"}'" \
-    PYTHONPATH="/app/src"
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Uvicorn (ASGI)
+CMD [ "sh", "-lc", "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.prod} uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-4} --timeout-keep-alive 65" ]
+
+# ==== ВАРИАНТ 2: gunicorn + uvicorn.worker (раскомментируй при желании) ====
+# CMD [ "sh", "-lc", "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.prod} gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout 60 --access-logfile - --error-logfile -" ]

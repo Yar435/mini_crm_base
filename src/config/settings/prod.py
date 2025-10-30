@@ -18,7 +18,7 @@ INTERNAL_IPS = []  # не нужно в prod
 INSTALLED_APPS += ["whitenoise.runserver_nostatic"]
 MIDDLEWARE = ["whitenoise.middleware.WhiteNoiseMiddleware"] + MIDDLEWARE
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = "/app/staticfiles"
 WHITENOISE_USE_FINDERS = True
 
 # Базовая безопасность (при реальном домене расширим)

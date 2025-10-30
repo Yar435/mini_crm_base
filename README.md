@@ -9,6 +9,10 @@
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 
+## Knowledge base
+Рабочие заметки: `docs/Obsidian Vault/`. Личные разделы (журналы, времянка) не попадают в git.
+
+
 ## 🚀 Quick Start
 
 ```bash
