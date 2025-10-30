@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.contrib import admin
-from django.db import transaction
 from django.urls import include, path
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
@@ -10,9 +9,6 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
@@ -21,7 +17,6 @@ from clients.views import ClientViewSet
 # наш сериалайзер, добавляющий claim token_version
 from core.auth import TokenObtainPairWithVersionSerializer
 from core.ready import ready
-from core.serializers import DetailResponseSerializer
 from core.views import LogoutView, health
 from deals.views import DealViewSet, ManagerViewSet
 

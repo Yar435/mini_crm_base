@@ -96,3 +96,11 @@ repos:
 #                  - --config-file=pyproject.toml
 #                  - --exclude
 #                  - '(^|.*/)?context_files\.py$'
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (unit + coverage)
+        entry: bash -lc 'pytest --cov=src --cov-report=term-missing --cov-report=xml:/tmp/coverage.xml'
+        language: system
+        pass_filenames: false

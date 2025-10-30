@@ -1,9 +1,8 @@
 import os
 
+import redis
 from django.db import connections
 from django.http import JsonResponse
-
-import redis
 
 
 def ready(request):

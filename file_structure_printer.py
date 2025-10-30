@@ -40,7 +40,7 @@ BASE_PATH = ""
 DISPLAY_MODE = "TRUNCATE"  # "FULL" or "TRUNCATE"
 
 # Ограничение X из описания: если (files+dirs) > X_LIMIT — применяем усечение
-X_LIMIT = 20 # X
+X_LIMIT = 20  # X
 
 # Если X_LIMIT - num_dirs <= 0 -> показываем FALLBACK_SHOW_FILES (Z)
 FALLBACK_SHOW_FILES = 2  # Z

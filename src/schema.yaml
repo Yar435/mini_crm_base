@@ -7,8 +7,7 @@ paths:
   /api/auth/logout/:
     post:
       operationId: api_auth_logout_create
-      description: Инкрементирует `token_version` у пользователя и делает невалидными
-        все выданные ранее токены. Требуется аутентификация действующим access-токеном.
+      description: Инкрементирует `token_version` и делает все старые токены недействительными.
       summary: Выйти (инвалидировать токены)
       tags:
       - Auth

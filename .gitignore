@@ -10,6 +10,7 @@ venv/
 
 # Tools
 .pytest_cache/
+coverage.xml
 .mypy_cache/
 .coverage
 htmlcov/

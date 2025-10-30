@@ -26,12 +26,12 @@ DATABASES = {
     }
 }
 
-# ✅ Кэш — в память
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-#     }
-# }
+# ✅ Кэш — в память (никаких внешних сервисов в unit-тестах)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
 
 # ✅ Celery — синхронно/в памяти (без Redis)
 CELERY_TASK_ALWAYS_EAGER = True
