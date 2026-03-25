@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django_prometheus",
     "ratelimit",
     # Твои приложения
+    "analytics",
     "core",
     "clients",
     "deals",
@@ -136,12 +137,24 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
 
 CELERY_TIMEZONE = "UTC"
 CELERY_TASK_TRACK_STARTED = True
+# Пересборка графов может быть тяжёлой на больших данных; при алертах смотреть
+# analytics_process_graph_build_seconds и длительность задачи rebuild_graph_snapshots.
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
 
 CELERY_BEAT_SCHEDULE = {
     "heartbeat-every-minute": {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(minute="*/1"),  # каждую минуту
+        "args": (),
+    },
+    "analytics-rebuild-graphs-every-minute": {
+        "task": "analytics.tasks.rebuild_graph_snapshots",
+        "schedule": crontab(minute="*/1"),
+        "args": (),
+    },
+    "analytics-incremental-leads": {
+        "task": "analytics.tasks.incremental_sync_leads",
+        "schedule": crontab(minute="*/15"),
         "args": (),
     },
 }
@@ -220,6 +233,20 @@ SIMPLE_JWT = {
 
 
 # --- Logging (JSON-ish) ---
+try:
+    import pythonjsonlogger  # noqa: F401
+
+    _JSON_FORMATTER = {
+        "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
+    }
+except Exception:
+    # Fallback, чтобы проект мог стартовать без python-json-logger в окружении.
+    _JSON_FORMATTER = {
+        "class": "logging.Formatter",
+        "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
+    }
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -229,10 +256,7 @@ LOGGING = {
         },
     },
     "formatters": {
-        "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
-        },
+        "json": _JSON_FORMATTER,
         # для локалки можно оставить и обычный формат при желании
     },
     "handlers": {
@@ -266,3 +290,7 @@ HEALTH_REQUIRE_BEAT = True  # в проде требуем пульс beat
 
 
 METRICS_ENABLED = os.getenv("METRICS_ENABLED", "1") == "1"
+
+# amoCRM REST API (incremental sync); задача incremental_sync_leads пропускается без этих значений
+AMOCRM_SUBDOMAIN = os.getenv("AMOCRM_SUBDOMAIN", "").strip()
+AMOCRM_ACCESS_TOKEN = os.getenv("AMOCRM_ACCESS_TOKEN", "").strip()

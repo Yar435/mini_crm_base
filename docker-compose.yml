@@ -71,13 +71,15 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       FLOWER_PORT: 5555
-      FLOWER_BROKER_URL: ${CELERY_BROKER_URL}
+      # Same default as CELERY_BROKER_URL in Django (see config/settings/base.py); host .env may override.
+      FLOWER_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
     depends_on:
       redis:
         condition: service_started
       worker:
         condition: service_started
-    entrypoint: ["sh", "-lc", "cd /app/src && celery -A config flower --broker=${FLOWER_BROKER_URL}"]
+    # Use $$ so the shell expands container env, not Compose host interpolation.
+    entrypoint: ["sh", "-lc", "cd /app/src && exec celery -A config flower --broker=$$FLOWER_BROKER_URL"]
     ports:
       - "5555:5555"
 
@@ -104,7 +106,7 @@ services:
       image: danihodovic/celery-exporter:latest   # или :latest
       env_file: .env.prod
       environment:
-          CE_BROKER_URL: ${CELERY_BROKER_URL}
+          CE_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
           CE_LISTEN_ADDRESS: "0.0.0.0"
           CE_PORT: "9808"
           CE_NAMESPACE: "mini_crm"                   # опционально, метки

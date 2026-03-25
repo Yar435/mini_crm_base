@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
+from django.views.decorators.cache import never_cache
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -19,6 +20,7 @@ from core.auth import TokenObtainPairWithVersionSerializer
 from core.ready import ready
 from core.views import LogoutView, health
 from deals.views import DealViewSet, ManagerViewSet
+from django.urls import include as _include
 
 # --- Auth views (с описаниями для Swagger) ---
 
@@ -74,14 +76,24 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API
     path("api/", include(router.urls)),
+    path("api/analytics/", _include("analytics.urls")),
     # Auth
     path("api/auth/token/", TokenObtainPairPatchedView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshPatchedView.as_view(), name="token_refresh"),
     path("api/auth/token/verify/", TokenVerifyPatchedView.as_view(), name="token_verify"),
     # OpenAPI + UI
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    # never_cache чтобы Swagger UI не залипал на старой схеме
+    path("api/schema/", never_cache(SpectacularAPIView.as_view()), name="schema"),
+    path(
+        "api/docs/",
+        never_cache(SpectacularSwaggerView.as_view(url_name="schema")),
+        name="swagger-ui",
+    ),
+    path(
+        "api/redoc/",
+        never_cache(SpectacularRedocView.as_view(url_name="schema")),
+        name="redoc",
+    ),
     # health
     path("health/", health),
     path("ready", ready),

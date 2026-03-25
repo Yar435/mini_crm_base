@@ -5,6 +5,7 @@ omit =
     */migrations/*
     */__init__.py
     src/config/*
+    src/analytics/management/commands/*
 
 [report]
 show_missing = True

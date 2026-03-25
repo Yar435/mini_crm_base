@@ -4,6 +4,53 @@ info:
   version: 0.1.0
   description: Учебно-практический CRM backend (Django + DRF + JWT)
 paths:
+  /api/analytics/process-graph/:
+    get:
+      operationId: api_analytics_process_graph_retrieve
+      summary: Граф процессов (микроаналитика)
+      parameters:
+      - in: query
+        name: as_of
+        schema:
+          type: string
+        description: Unix timestamp (seconds) или ISO datetime
+        required: true
+      - in: query
+        name: from_status_id
+        schema:
+          type: integer
+      - in: query
+        name: mode
+        schema:
+          type: string
+        description: replay_speed | rolling_window
+      - in: query
+        name: pipeline_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: top_k
+        schema:
+          type: integer
+      - in: query
+        name: window_minutes
+        schema:
+          type: integer
+        description: Обязательно только для mode=rolling_window
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/auth/logout/:
     post:
       operationId: api_auth_logout_create
@@ -12,7 +59,7 @@ paths:
       tags:
       - Auth
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -121,7 +168,7 @@ paths:
       tags:
       - Clients
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -169,7 +216,7 @@ paths:
               $ref: '#/components/schemas/ClientRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '201':
@@ -199,7 +246,7 @@ paths:
       tags:
       - Clients
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -230,7 +277,7 @@ paths:
               $ref: '#/components/schemas/ClientRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -260,7 +307,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedClientRequest'
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -282,7 +329,7 @@ paths:
       tags:
       - Clients
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '204':
@@ -340,7 +387,7 @@ paths:
       tags:
       - Deals
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -377,7 +424,7 @@ paths:
               $ref: '#/components/schemas/DealRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '201':
@@ -400,7 +447,7 @@ paths:
       tags:
       - Deals
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -431,7 +478,7 @@ paths:
               $ref: '#/components/schemas/DealRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -461,7 +508,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDealRequest'
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -483,7 +530,7 @@ paths:
       tags:
       - Deals
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '204':
@@ -529,7 +576,7 @@ paths:
       tags:
       - Managers
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -576,7 +623,7 @@ paths:
               $ref: '#/components/schemas/ManagerRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '201':
@@ -606,7 +653,7 @@ paths:
       tags:
       - Managers
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -637,7 +684,7 @@ paths:
               $ref: '#/components/schemas/ManagerRequest'
         required: true
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -667,7 +714,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedManagerRequest'
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '200':
@@ -689,7 +736,7 @@ paths:
       tags:
       - Managers
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       responses:
         '204':
@@ -701,7 +748,7 @@ paths:
       tags:
       - System
       security:
-      - VersionedJWTAuthentication: []
+      - jwtAuth: []
       - bearerAuth: []
       - {}
       responses:
@@ -1027,7 +1074,7 @@ components:
       required:
       - token
   securitySchemes:
-    VersionedJWTAuthentication:
+    jwtAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT

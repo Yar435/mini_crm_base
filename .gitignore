@@ -24,8 +24,16 @@ htmlcov/
 Thumbs.db
 pass.txt
 
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+
 # --- Obsidian vault rules ---
 docs/ObsidianVault/01_Journal/
 docs/ObsidianVault/98_TemporaryMarkdowns/
 docs/ObsidianVault/.obsidian/cache/
 docs/ObsidianVault/.trash/
+
+# Local amoCRM dumps & vendor docs (keep out of git; see docs/amocrm_incremental_sync.md)
+Blondon_memory/
+amocrm_api_docs/
