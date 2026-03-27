@@ -55,8 +55,8 @@ export async function apiFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(joinPath(path), { ...rest, headers });
-  return res;
+  const url = joinPath(path);
+  return fetch(url, { ...rest, headers });
 }
 
 export async function apiJson<T>(path: string, init?: RequestInit & { skipAuth?: boolean }): Promise<T> {

@@ -1,0 +1,25 @@
+/* Дополнения к теме React Flow: читаемые подписи рёбер на тёмном фоне */
+.process-graph-flow .react-flow__edge-text {
+  font-size: 11px;
+  fill: #e2e8f0;
+}
+
+.process-graph-flow .react-flow__attribution {
+  display: none;
+}
+
+/* xyflow v12 может использовать префикс xy-flow__ */
+.process-graph-flow [class*="__edge-text"] {
+  font-size: 11px;
+}
+
+.process-graph-controls .react-flow__controls-button,
+.process-graph-controls [class*="__controls-button"] {
+  background: rgb(15 23 42) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+.process-graph-controls .react-flow__controls-button svg,
+.process-graph-controls [class*="__controls-button"] svg {
+  fill: #e2e8f0;
+}
